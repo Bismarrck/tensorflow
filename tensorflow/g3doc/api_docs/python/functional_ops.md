@@ -2,7 +2,7 @@
 
 # Higher Order Functions
 
-Note: Functions taking `Output` arguments can also take anything accepted by
+Note: Functions taking `Tensor` arguments can also take anything accepted by
 [`tf.convert_to_tensor`](framework.md#convert_to_tensor).
 
 [TOC]
@@ -46,13 +46,14 @@ one of the following methods is recommended. First, if the function is
 expressible as TensorFlow ops, use
 
 ```python
-  result = SparseTensor(input.indices, fn(input.values), input.shape)
+  result = SparseTensor(input.indices, fn(input.values), input.dense_shape)
 ```
 
 If, however, the function is not expressible as a TensorFlow op, then use
 
 ```python
-result = SparseTensor(input.indices, map_fn(fn, input.values), input.shape)
+result = SparseTensor(
+  input.indices, map_fn(fn, input.values), input.dense_shape)
 ```
 
 instead.

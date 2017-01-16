@@ -9,7 +9,7 @@ idempotent operation that simply divides `total` by `count`.
 
 For estimation of the metric  over a stream of data, the function creates an
 `update_op` operation that updates these variables and returns the `accuracy`.
-Internally, an `is_correct` operation computes an `Output` with elements 1.0
+Internally, an `is_correct` operation computes a `Tensor` with elements 1.0
 where the corresponding elements of `predictions` and `labels` match and 0.0
 otherwise. Then `update_op` increments `total` with the reduced sum of the
 product of `weights` and `is_correct`, and it increments `count` with the
@@ -20,10 +20,12 @@ If `weights` is `None`, weights default to 1. Use weights of 0 to mask values.
 ##### Args:
 
 
-*  <b>`predictions`</b>: The predicted values, an `Output` of any shape.
-*  <b>`labels`</b>: The ground truth values, an `Output` whose shape matches
+*  <b>`predictions`</b>: The predicted values, a `Tensor` of any shape.
+*  <b>`labels`</b>: The ground truth values, a `Tensor` whose shape matches
     `predictions`.
-*  <b>`weights`</b>: An optional `Output` whose shape is broadcastable to `predictions`.
+*  <b>`weights`</b>: `Tensor` whose rank is either 0, or the same rank as `labels`, and
+    must be broadcastable to `labels` (i.e., all dimensions must be either
+    `1`, or the same as the corresponding `labels` dimension).
 *  <b>`metrics_collections`</b>: An optional list of collections that `accuracy` should
     be added to.
 *  <b>`updates_collections`</b>: An optional list of collections that `update_op` should
@@ -33,7 +35,7 @@ If `weights` is `None`, weights default to 1. Use weights of 0 to mask values.
 ##### Returns:
 
 
-*  <b>`accuracy`</b>: A tensor representing the accuracy, the value of `total` divided
+*  <b>`accuracy`</b>: A `Tensor` representing the accuracy, the value of `total` divided
     by `count`.
 *  <b>`update_op`</b>: An operation that increments the `total` and `count` variables
     appropriately and whose value matches `accuracy`.

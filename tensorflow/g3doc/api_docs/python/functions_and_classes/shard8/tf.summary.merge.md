@@ -13,14 +13,14 @@ in the summaries to merge use the same tag.
 ##### Args:
 
 
-*  <b>`inputs`</b>: A list of `string` `Output` objects containing serialized `Summary`
+*  <b>`inputs`</b>: A list of `string` `Tensor` objects containing serialized `Summary`
     protocol buffers.
 *  <b>`collections`</b>: Optional list of graph collections keys. The new summary op is
-    added to these collections. Defaults to `[GraphKeys.SUMMARIES]`.
+    added to these collections. Defaults to `[]`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  A scalar `Output` of type `string`. The serialized `Summary` protocol
+  A scalar `Tensor` of type `string`. The serialized `Summary` protocol
   buffer resulting from the merging.
 

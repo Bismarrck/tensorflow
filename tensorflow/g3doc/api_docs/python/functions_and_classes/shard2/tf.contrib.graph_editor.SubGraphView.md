@@ -157,7 +157,7 @@ Create a subgraph containing the given ops and the "passthrough" tensors.
 
 *  <b>`inside_ops`</b>: an object convertible to a list of `tf.Operation`. This list
     defines all the operations in the subgraph.
-*  <b>`passthrough_ts`</b>: an object convertible to a list of `tf.Output`. This list
+*  <b>`passthrough_ts`</b>: an object convertible to a list of `tf.Tensor`. This list
     define all the "passthrough" tensors. A passthrough tensor is a tensor
     which goes directly from the input of the subgraph to it output, without
     any intermediate operations. All the non passthrough tensors are
@@ -167,7 +167,7 @@ Create a subgraph containing the given ops and the "passthrough" tensors.
 
 
 *  <b>`TypeError`</b>: if inside_ops cannot be converted to a list of `tf.Operation`
-    or if `passthrough_ts` cannot be converted to a list of `tf.Output`.
+    or if `passthrough_ts` cannot be converted to a list of `tf.Tensor`.
 
 
 - - -
@@ -203,6 +203,13 @@ The connected output tensors of this subgraph view.
 #### `tf.contrib.graph_editor.SubGraphView.consumers()` {#SubGraphView.consumers}
 
 Return a Python set of all the consumers of this subgraph view.
+
+A consumer of a subgraph view is a tf.Operation which is a consumer
+of one of the output tensors and is not in the subgraph.
+
+##### Returns:
+
+  A list of `tf.Operation` which are the consumers of this subgraph view.
 
 
 - - -

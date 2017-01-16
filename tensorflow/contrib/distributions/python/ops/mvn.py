@@ -47,7 +47,7 @@ __all__ = [
 ]
 
 _mvn_prob_note = """
-`x` is a batch vector with compatible shape if `x` is an `Output` whose
+`x` is a batch vector with compatible shape if `x` is a `Tensor` whose
 shape can be broadcast up to either:
 
 ```
@@ -222,14 +222,14 @@ class _MultivariateNormalOperatorPD(distribution.Distribution):
     return self._cov.get_batch_shape()
 
   def _event_shape(self):
-    return array_ops.pack([self._cov.vector_space_dimension()])
+    return array_ops.stack([self._cov.vector_space_dimension()])
 
   def _get_event_shape(self):
     return self._cov.get_shape()[-1:]
 
   def _sample_n(self, n, seed=None):
     # Recall _assert_valid_mu ensures mu and self._cov have same batch shape.
-    shape = array_ops.concat(0, [self._cov.vector_shape(), [n]])
+    shape = array_ops.concat([self._cov.vector_shape(), [n]], 0)
     white_samples = random_ops.random_normal(shape=shape,
                                              mean=0.,
                                              stddev=1.,
@@ -239,9 +239,9 @@ class _MultivariateNormalOperatorPD(distribution.Distribution):
     correlated_samples = self._cov.sqrt_matmul(white_samples)
 
     # Move the last dimension to the front
-    perm = array_ops.concat(0, (
-        array_ops.pack([array_ops.rank(correlated_samples) - 1]),
-        math_ops.range(0, array_ops.rank(correlated_samples) - 1)))
+    perm = array_ops.concat(
+        (array_ops.stack([array_ops.rank(correlated_samples) - 1]),
+         math_ops.range(0, array_ops.rank(correlated_samples) - 1)), 0)
 
     # TODO(ebrevdo): Once we get a proper tensor contraction op,
     # perform the inner product using that instead of batch_matmul
@@ -372,7 +372,7 @@ class MultivariateNormalDiag(_MultivariateNormalOperatorPD):
     Args:
       mu:  Rank `N + 1` floating point tensor with shape `[N1,...,Nb, k]`,
         `b >= 0`.
-      diag_stdev: Rank `N + 1` `Output` with same `dtype` and shape as `mu`,
+      diag_stdev: Rank `N + 1` `Tensor` with same `dtype` and shape as `mu`,
         representing the standard deviations.  Must be positive.
       validate_args: `Boolean`, default `False`.  Whether to validate
         input with asserts.  If `validate_args` is `False`,
@@ -612,7 +612,7 @@ class MultivariateNormalCholesky(_MultivariateNormalOperatorPD):
     Args:
       mu: `(N+1)-D` floating point tensor with shape `[N1,...,Nb, k]`,
         `b >= 0`.
-      chol: `(N+2)-D` `Output` with same `dtype` as `mu` and shape
+      chol: `(N+2)-D` `Tensor` with same `dtype` as `mu` and shape
         `[N1,...,Nb, k, k]`.  The upper triangular part is ignored (treated as
         though it is zero), and the diagonal must be positive.
       validate_args: `Boolean`, default `False`.  Whether to validate input
@@ -696,7 +696,7 @@ class MultivariateNormalFull(_MultivariateNormalOperatorPD):
     Args:
       mu: `(N+1)-D` floating point tensor with shape `[N1,...,Nb, k]`,
         `b >= 0`.
-      sigma: `(N+2)-D` `Output` with same `dtype` as `mu` and shape
+      sigma: `(N+2)-D` `Tensor` with same `dtype` as `mu` and shape
         `[N1,...,Nb, k, k]`.  Each batch member must be positive definite.
       validate_args: `Boolean`, default `False`.  Whether to validate input
         with asserts.  If `validate_args` is `False`, and the inputs are

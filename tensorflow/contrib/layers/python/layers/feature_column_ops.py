@@ -50,7 +50,7 @@ def _embeddings_from_arguments(column,
    args: the _DeepEmbeddingLookupArguments for this column.
    weight_collections: collections to store weights in.
    trainable: whether these embeddings should be trainable.
-   output_rank: the desired rank of the returned `Output`. Inner dimensions will
+   output_rank: the desired rank of the returned `Tensor`. Inner dimensions will
      be combined to produce the desired rank.
 
   Returns:
@@ -66,7 +66,8 @@ def _embeddings_from_arguments(column,
     weight_tensor = layers._inner_flatten(args.weight_tensor, output_rank)
   # pylint: enable=protected-access
 
-  if args.hashed:
+  # This option is only enabled for scattered_embedding_column.
+  if args.hash_key:
     embeddings = contrib_variables.model_variable(
         name='weights',
         shape=[args.vocab_size],
@@ -75,8 +76,9 @@ def _embeddings_from_arguments(column,
         trainable=trainable,
         collections=weight_collections)
 
-    return embedding_ops.hashed_embedding_lookup_sparse(
+    return embedding_ops.scattered_embedding_lookup_sparse(
         embeddings, input_tensor, args.dimension,
+        hash_key=args.hash_key,
         combiner=args.combiner, name='lookup')
 
   if args.shared_embedding_name is not None:
@@ -179,7 +181,7 @@ def _input_from_feature_columns(columns_to_tensors,
           except ValueError as e:
             raise ValueError('Error creating input layer for column: {}.\n'
                              '{}, {}'.format(column.name, e, ee))
-    return array_ops.concat(output_rank - 1, output_tensors)
+    return array_ops.concat(output_tensors, output_rank - 1)
 
 
 def input_from_feature_columns(columns_to_tensors,
@@ -246,6 +248,7 @@ def input_from_feature_columns(columns_to_tensors,
                                      output_rank=2,
                                      default_name='input_from_feature_columns')
 
+
 @experimental
 def sequence_input_from_feature_columns(columns_to_tensors,
                                         feature_columns,
@@ -256,9 +259,9 @@ def sequence_input_from_feature_columns(columns_to_tensors,
 
   See documentation for `input_from_feature_columns`. The following types of
   `FeatureColumn` are permitted in `feature_columns`: `_OneHotColumn`,
-  `_EmbeddingColumn`, `_HashedEmbeddingColumn`, `_RealValuedColumn`,
+  `_EmbeddingColumn`, `_ScatteredEmbeddingColumn`, `_RealValuedColumn`,
   `_DataFrameColumn`. In addition, columns in `feature_columns` may not be
-  constructed using any of the following: `HashedEmbeddingColumn`,
+  constructed using any of the following: `ScatteredEmbeddingColumn`,
   `BucketizedColumn`, `CrossedColumn`.
 
   Args:
@@ -368,7 +371,7 @@ def _create_joint_embedding_lookup(columns_to_tensors,
     sparse_tensors.append(
         sparse_tensor_py.SparseTensor(t.indices,
                                       values,
-                                      t.shape))
+                                      t.dense_shape))
   sparse_tensor = sparse_ops.sparse_concat(1, sparse_tensors)
   with variable_scope.variable_scope(
       None, default_name='linear_weights', values=columns_to_tensors.values()):
@@ -376,7 +379,7 @@ def _create_joint_embedding_lookup(columns_to_tensors,
         name='weights',
         shape=[prev_size, num_outputs],
         dtype=dtypes.float32,
-        initializer=init_ops.zeros_initializer,
+        initializer=init_ops.zeros_initializer(),
         trainable=trainable,
         collections=weight_collections)
     if isinstance(variable, variables.Variable):
@@ -453,7 +456,8 @@ def joint_weighted_sum_from_feature_columns(columns_to_tensors,
     bias = contrib_variables.model_variable(
         'bias_weight',
         shape=[num_outputs],
-        initializer=init_ops.zeros_initializer,
+        initializer=init_ops.zeros_initializer(),
+        trainable=trainable,
         collections=_add_variable_collection(weight_collections))
     _log_variable(bias)
     predictions = nn_ops.bias_add(predictions_no_bias, bias)
@@ -487,7 +491,8 @@ def weighted_sum_from_feature_columns(columns_to_tensors,
         columns_to_tensors=columns_to_tensor,
         feature_columns=feature_columns,
         num_outputs=1)
-    loss = tf.nn.sigmoid_cross_entropy_with_logits(logits, labels)
+    loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=labels,
+                                                   logits=logits)
     ```
 
   Args:
@@ -541,11 +546,14 @@ def weighted_sum_from_feature_columns(columns_to_tensors,
             values=columns_to_tensors.values()):
           tensor = column._to_dense_tensor(transformed_tensor)
           tensor = fc._reshape_real_valued_tensor(tensor, 2, column.name)
-          variable = [contrib_variables.model_variable(
-              name='weight',
-              shape=[tensor.get_shape()[1], num_outputs],
-              initializer=init_ops.zeros_initializer,
-              collections=weight_collections)]
+          variable = [
+              contrib_variables.model_variable(
+                  name='weight',
+                  shape=[tensor.get_shape()[1], num_outputs],
+                  initializer=init_ops.zeros_initializer(),
+                  trainable=trainable,
+                  collections=weight_collections)
+          ]
           predictions = math_ops.matmul(tensor, variable[0], name='matmul')
       except ValueError as ee:
         raise ValueError('Error creating weighted sum for column: {}.\n'
@@ -559,7 +567,8 @@ def weighted_sum_from_feature_columns(columns_to_tensors,
     bias = contrib_variables.model_variable(
         'bias_weight',
         shape=[num_outputs],
-        initializer=init_ops.zeros_initializer,
+        initializer=init_ops.zeros_initializer(),
+        trainable=trainable,
         collections=_add_variable_collection(weight_collections))
     _log_variable(bias)
     predictions = nn_ops.bias_add(predictions_no_bias, bias)
@@ -616,7 +625,7 @@ def parse_feature_columns_from_examples(serialized,
       the serialized protos in the batch.
 
   Returns:
-    A `dict` mapping FeatureColumn to `Output` and `SparseTensor` values.
+    A `dict` mapping FeatureColumn to `Tensor` and `SparseTensor` values.
   """
   check_feature_columns(feature_columns)
   columns_to_tensors = parsing_ops.parse_example(
@@ -672,7 +681,7 @@ def transform_features(features, feature_columns):
       should be instances of classes derived from _FeatureColumn.
 
   Returns:
-    A `dict` mapping FeatureColumn to `Output` and `SparseTensor` values.
+    A `dict` mapping FeatureColumn to `Tensor` and `SparseTensor` values.
   """
   check_feature_columns(feature_columns)
   columns_to_tensor = features.copy()
@@ -710,9 +719,9 @@ def parse_feature_columns_from_sequence_examples(
   Returns:
     A tuple consisting of:
     context_features: a dict mapping `FeatureColumns` from
-      `context_feature_columns` to their parsed `Output`s/`SparseTensor`s.
+      `context_feature_columns` to their parsed `Tensors`/`SparseTensor`s.
     sequence_features: a dict mapping `FeatureColumns` from
-      `sequence_feature_columns` to their parsed `Output`s/`SparseTensor`s.
+      `sequence_feature_columns` to their parsed `Tensors`/`SparseTensor`s.
   """
   # Sequence example parsing requires a single (scalar) example.
   try:
@@ -889,7 +898,7 @@ _SUPPORTED_SEQUENCE_COLUMNS = (fc._OneHotColumn,
                                fc._EmbeddingColumn,
                                fc._RealValuedColumn)
 
-_FORBIDDEN_SEQUENCE_COLUMNS = (fc._HashedEmbeddingColumn,
+_FORBIDDEN_SEQUENCE_COLUMNS = (fc._ScatteredEmbeddingColumn,
                                fc._BucketizedColumn,
                                fc._CrossedColumn)
 

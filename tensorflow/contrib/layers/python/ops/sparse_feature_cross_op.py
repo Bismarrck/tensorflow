@@ -50,7 +50,7 @@ def sparse_feature_cross(inputs, hashed_output=False, num_buckets=0,
   See sparse_feature_cross_kernel.cc for more details.
 
   Args:
-    inputs: List of `SparseTensor` or `Output` to be crossed.
+    inputs: List of `SparseTensor` or `Tensor` to be crossed.
     hashed_output: If true, returns the hash of the cross instead of the string.
       This will allow us avoiding string manipulations.
     num_buckets: It is used if hashed_output is true.
@@ -81,7 +81,7 @@ def sparse_feature_cross(inputs, hashed_output=False, num_buckets=0,
 
   indices = [sp_input.indices for sp_input in sparse_inputs]
   values = [sp_input.values for sp_input in sparse_inputs]
-  shapes = [sp_input.shape for sp_input in sparse_inputs]
+  shapes = [sp_input.dense_shape for sp_input in sparse_inputs]
   out_type = dtypes.int64 if hashed_output else dtypes.string
 
   internal_type = dtypes.string

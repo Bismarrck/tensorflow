@@ -23,6 +23,7 @@ import numpy as np
 
 from tensorflow.python.framework import constant_op
 from tensorflow.python.framework import ops
+from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import math_ops
 
 __all__ = [
@@ -65,11 +66,11 @@ def ndtr(x, name="ndtr"):
   ```
 
   Args:
-    x: `Output` of type `float32`, `float64`.
+    x: `Tensor` of type `float32`, `float64`.
     name: Python string. A name for the operation (default="ndtr").
 
   Returns:
-    ndtr: `Output` with `dtype=x.dtype`.
+    ndtr: `Tensor` with `dtype=x.dtype`.
 
   Raises:
     TypeError: if `x` is not floating-type.
@@ -90,9 +91,9 @@ def _ndtr(x):
       0.5 * math.sqrt(2.), dtype=x.dtype, name="half_sqrt_2")
   w = x * half_sqrt_2
   z = math_ops.abs(w)
-  y = math_ops.select(math_ops.less(z, half_sqrt_2),
+  y = array_ops.where(math_ops.less(z, half_sqrt_2),
                       1. + math_ops.erf(w),
-                      math_ops.select(math_ops.greater(w, 0.),
+                      array_ops.where(math_ops.greater(w, 0.),
                                       2. - math_ops.erfc(z),
                                       math_ops.erfc(z)))
   return 0.5 * y
@@ -135,13 +136,13 @@ def log_ndtr(x, series_order=3, name="log_ndtr"):
 
 
   Args:
-    x: `Output` of type `float32`, `float64`.
+    x: `Tensor` of type `float32`, `float64`.
     series_order: Positive Python `integer`. Maximum depth to
       evaluate the asymptotic expansion.  This is the `N` above.
     name: Python string. A name for the operation (default="log_ndtr").
 
   Returns:
-    log_ndtr: `Output` with `dtype=x.dtype`.
+    log_ndtr: `Tensor` with `dtype=x.dtype`.
 
   Raises:
     TypeError: if `x.dtype` is not handled.
@@ -180,10 +181,10 @@ def log_ndtr(x, series_order=3, name="log_ndtr"):
     #   the gradient of a select involves the calculation 1*dy+0*(-inf)=nan
     #   regardless of whether dy is finite. Note that the minimum is a NOP if
     #   the branch is chosen.
-    return math_ops.select(
+    return array_ops.where(
         math_ops.greater(x, upper_segment),
         -_ndtr(-x),  # log(1-x) ~= -x, x << 1
-        math_ops.select(math_ops.greater(x, lower_segment),
+        array_ops.where(math_ops.greater(x, lower_segment),
                         math_ops.log(_ndtr(math_ops.maximum(x, lower_segment))),
                         _log_ndtr_lower(math_ops.minimum(x, lower_segment),
                                         series_order)))

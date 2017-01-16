@@ -4,7 +4,7 @@ Inserts a placeholder for a sparse tensor that will be always fed.
 
 **Important**: This sparse tensor will produce an error if evaluated.
 Its value must be fed using the `feed_dict` optional argument to
-`Session.run()`, `Output.eval()`, or `Operation.run()`.
+`Session.run()`, `Tensor.eval()`, or `Operation.run()`.
 
 For example:
 
@@ -23,7 +23,7 @@ with tf.Session() as sess:
   print(sess.run(y, feed_dict={
     x: (indices, values, shape)}))  # Will succeed.
 
-  sp = tf.SparseTensor(indices=indices, values=values, shape=shape)
+  sp = tf.SparseTensor(indices=indices, values=values, dense_shape=shape)
   sp_value = sp.eval(session)
   print(sess.run(y, feed_dict={x: sp_value}))  # Will succeed.
 ```

@@ -59,7 +59,7 @@ batch_size = 32
 num_unroll = 20
 num_enqueue_threads = 3
 lstm_size = 8
-cell = tf.nn.rnn_cell.BasicLSTMCell(num_units=lstm_size)
+cell = tf.contrib.rnn.BasicLSTMCell(num_units=lstm_size)
 
 key, sequences, context = my_parser(raw_data)
 initial_state_values = tf.zeros((state_size,), dtype=tf.float32)
@@ -77,10 +77,10 @@ batch = tf.batch_sequences_with_states(
 inputs = batch.sequences["input"]
 context_label = batch.context["label"]
 
-inputs_by_time = tf.split(1, num_unroll, inputs)
+inputs_by_time = tf.split(value=inputs, num_or_size_splits=num_unroll, axis=1)
 assert len(inputs_by_time) == num_unroll
 
-lstm_output, _ = tf.nn.state_saving_rnn(
+lstm_output, _ = tf.contrib.rnn.static_state_saving_rnn(
   cell,
   inputs_by_time,
   state_saver=batch,
@@ -99,12 +99,12 @@ while True:
 ##### Args:
 
 
-*  <b>`input_key`</b>: A string scalar `Output`, the **unique** key for the given
+*  <b>`input_key`</b>: A string scalar `Tensor`, the **unique** key for the given
     input example.  This is used to keep track of the split minibatch elements
     of this input.  Batched keys of the current iteration are made
     accessible via the `key` property.  The shape of `input_key` (scalar) must
     be fully specified.
-*  <b>`input_sequences`</b>: A dict mapping string names to `Output` values.  The values
+*  <b>`input_sequences`</b>: A dict mapping string names to `Tensor` values.  The values
     must all have matching first dimension, called `value_length`. They may
     vary from input to input. The remainder of the shape (other than the first
     dimension) must be fully specified.
@@ -116,7 +116,7 @@ while True:
     **Note**: if `pad=False`, then `value_length` must always be a multiple
       of `num_unroll`.
 
-*  <b>`input_context`</b>: A dict mapping string names to `Output` values.  The values
+*  <b>`input_context`</b>: A dict mapping string names to `Tensor` values.  The values
     are treated as "global" across all time splits of the given input example,
     and will be copied across for all minibatch elements accordingly.
     Batched and copied context of the current iteration are made
@@ -124,7 +124,7 @@ while True:
 
     **Note**: All input_context values must have fully defined shapes.
 
-*  <b>`input_length`</b>: None or an int32 scalar `Output`, the length of the sequence
+*  <b>`input_length`</b>: None or an int32 scalar `Tensor`, the length of the sequence
     prior to padding. If `input_length=None` and `pad=True` then the length
     will be inferred and will be equal to `value_length`. If `pad=False` then
     `input_length` cannot be `None`: `input_length` must be specified. Its
@@ -142,7 +142,7 @@ while True:
 *  <b>`num_unroll`</b>: Python integer, how many time steps to unroll at a time.
     The input sequences of length k are then split into k / num_unroll many
     segments.
-*  <b>`batch_size`</b>: int or int32 scalar `Output`, how large minibatches should
+*  <b>`batch_size`</b>: int or int32 scalar `Tensor`, how large minibatches should
     be when accessing the `state()` method and `context`, `sequences`, etc,
     properties.
 *  <b>`num_threads`</b>: The int number of threads enqueuing input examples into a
@@ -312,7 +312,7 @@ Returns an op to save the current batch of state `state_name`.
 
 
 *  <b>`state_name`</b>: string, matches a key provided in `initial_states`.
-*  <b>`value`</b>: An `Output`.
+*  <b>`value`</b>: A `Tensor`.
     Its type must match that of `initial_states[state_name].dtype`.
     If we had at input:
 
@@ -357,7 +357,7 @@ are assigned to each split.
 
 ##### Returns:
 
-  An int32 vector `Output`.
+  An int32 vector `Tensor`.
 
 
 - - -
@@ -371,7 +371,7 @@ When an input is split up, the number of splits is equal to:
 
 ##### Returns:
 
-  An int32 vector `Output`.
+  An int32 vector `Tensor`.
 
 
 - - -
@@ -409,7 +409,7 @@ Returns batched state tensors.
 
 ##### Returns:
 
-  An `Output`: a batched set of states, either initial states (if this is
+  A `Tensor`: a batched set of states, either initial states (if this is
   the first run of the given example), or a value as stored during
   a previous iteration via `save_state` control flow.
   Its type is the same as `initial_states["state_name"].dtype`.
@@ -506,7 +506,7 @@ Example usage:
 batch_size = 32
 num_unroll = 20
 lstm_size = 8
-cell = tf.nn.rnn_cell.BasicLSTMCell(num_units=lstm_size)
+cell = tf.contrib.rnn.BasicLSTMCell(num_units=lstm_size)
 initial_state_values = tf.zeros(cell.state_size, dtype=tf.float32)
 
 raw_data = get_single_input_from_input_reader()
@@ -525,10 +525,10 @@ batch = stateful_reader.next_batch
 inputs = batch.sequences["input"]
 context_label = batch.context["label"]
 
-inputs_by_time = tf.split(1, num_unroll, inputs)
+inputs_by_time = tf.split(value=inputs, num_or_size_splits=num_unroll, axis=1)
 assert len(inputs_by_time) == num_unroll
 
-lstm_output, _ = tf.nn.state_saving_rnn(
+lstm_output, _ = tf.contrib.rnn.static_state_saving_rnn(
   cell,
   inputs_by_time,
   state_saver=batch,
@@ -565,24 +565,24 @@ Creates the SequenceQueueingStateSaver.
 ##### Args:
 
 
-*  <b>`batch_size`</b>: int or int32 scalar `Output`, how large minibatches should
+*  <b>`batch_size`</b>: int or int32 scalar `Tensor`, how large minibatches should
     be when accessing the `state()` method and `context`, `sequences`, etc,
     properties.
 *  <b>`num_unroll`</b>: Python integer, how many time steps to unroll at a time.
     The input sequences of length `k` are then split into `k / num_unroll`
     many segments.
-*  <b>`input_length`</b>: An int32 scalar `Output`, the length of the sequence prior
+*  <b>`input_length`</b>: An int32 scalar `Tensor`, the length of the sequence prior
     to padding.  This value may be at most `padded_length` for any given
     input (see below for the definition of `padded_length`).
     Batched and total lengths of the current iteration are made accessible
     via the `length` and `total_length` properties.  The shape of
     input_length (scalar) must be fully specified.
-*  <b>`input_key`</b>: A string scalar `Output`, the **unique** key for the given
+*  <b>`input_key`</b>: A string scalar `Tensor`, the **unique** key for the given
     input.  This is used to keep track of the split minibatch elements
     of this input.  Batched keys of the current iteration are made
     accessible via the `key` property.  The shape of `input_key` (scalar)
     must be fully specified.
-*  <b>`input_sequences`</b>: A dict mapping string names to `Output` values.  The
+*  <b>`input_sequences`</b>: A dict mapping string names to `Tensor` values.  The
     values must all have matching first dimension, called `padded_length`.
     The `SequenceQueueingStateSaver` will split these tensors along
     this first dimension into minibatch elements of dimension
@@ -593,7 +593,7 @@ Creates the SequenceQueueingStateSaver.
     to input, but must always be a multiple of `num_unroll`.  The remainder
     of the shape (other than the first dimension) must be fully specified.
 
-*  <b>`input_context`</b>: A dict mapping string names to `Output` values.  The values
+*  <b>`input_context`</b>: A dict mapping string names to `Tensor` values.  The values
     are treated as "global" across all time splits of the given input,
     and will be copied across for all minibatch elements accordingly.
     Batched and copied context of the current iteration are made
@@ -900,7 +900,7 @@ batch.
 
 - - -
 
-### `tf.contrib.training.weighted_resample(inputs, weights, overall_rate, scope=None, mean_decay=0.999, warmup=10, seed=None)` {#weighted_resample}
+### `tf.contrib.training.weighted_resample(inputs, weights, overall_rate, scope=None, mean_decay=0.999, seed=None)` {#weighted_resample}
 
 Performs an approximate weighted resampling of `inputs`.
 
@@ -917,9 +917,6 @@ rate of selection across all inputs (and many invocations!) is
 *  <b>`overall_rate`</b>: Desired overall rate of resampling.
 *  <b>`scope`</b>: Scope to use for the op.
 *  <b>`mean_decay`</b>: How quickly to decay the running estimate of the mean weight.
-*  <b>`warmup`</b>: Until the resulting tensor has been evaluated `warmup`
-    times, the resampling menthod uses the true mean over all calls
-    as its weight estimate, rather than a decayed mean.
 *  <b>`seed`</b>: Random seed.
 
 ##### Returns:
@@ -1039,7 +1036,7 @@ bucket the given `input_length` belongs to.  See the documentation for
 ##### Args:
 
 
-*  <b>`input_length`</b>: `int32` scalar `Output`, the sequence length of tensors.
+*  <b>`input_length`</b>: `int32` scalar `Tensor`, the sequence length of tensors.
 *  <b>`tensors`</b>: The list or dictionary of tensors, representing a single element,
     to bucket.  Nested lists are not supported.
 *  <b>`batch_size`</b>: The new batch size pulled from the queue
@@ -1070,7 +1067,7 @@ bucket the given `input_length` belongs to.  See the documentation for
 ##### Returns:
 
   A tuple `(sequence_length, outputs)` where `sequence_length` is
-  a 1-D `Output` of size `batch_size` and `outputs` is a list or dictionary
+  a 1-D `Tensor` of size `batch_size` and `outputs` is a list or dictionary
   of batched, bucketed, outputs corresponding to elements of `tensors`.
 
 ##### Raises:

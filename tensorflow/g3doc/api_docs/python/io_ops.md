@@ -2,7 +2,7 @@
 
 # Inputs and Readers
 
-Note: Functions taking `Output` arguments can also take anything accepted by
+Note: Functions taking `Tensor` arguments can also take anything accepted by
 [`tf.convert_to_tensor`](framework.md#convert_to_tensor).
 
 [TOC]
@@ -21,7 +21,7 @@ Inserts a placeholder for a tensor that will be always fed.
 
 **Important**: This tensor will produce an error if evaluated. Its value must
 be fed using the `feed_dict` optional argument to `Session.run()`,
-`Output.eval()`, or `Operation.run()`.
+`Tensor.eval()`, or `Operation.run()`.
 
 For example:
 
@@ -46,7 +46,7 @@ with tf.Session() as sess:
 
 ##### Returns:
 
-  An `Output` that may be used as a handle for feeding a value, but not
+  A `Tensor` that may be used as a handle for feeding a value, but not
   evaluated directly.
 
 
@@ -54,19 +54,19 @@ with tf.Session() as sess:
 
 ### `tf.placeholder_with_default(input, shape, name=None)` {#placeholder_with_default}
 
-A placeholder op that passes though `input` when its output is not fed.
+A placeholder op that passes through `input` when its output is not fed.
 
 ##### Args:
 
 
-*  <b>`input`</b>: A `Output`. The default value to produce when `output` is not fed.
+*  <b>`input`</b>: A `Tensor`. The default value to produce when `output` is not fed.
 *  <b>`shape`</b>: A `tf.TensorShape` or list of `ints`.
     The (possibly partial) shape of the tensor.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  A `Output`. Has the same type as `input`.
+  A `Tensor`. Has the same type as `input`.
   A placeholder tensor that defaults to `input` if it is not fed.
 
 
@@ -82,7 +82,7 @@ Inserts a placeholder for a sparse tensor that will be always fed.
 
 **Important**: This sparse tensor will produce an error if evaluated.
 Its value must be fed using the `feed_dict` optional argument to
-`Session.run()`, `Output.eval()`, or `Operation.run()`.
+`Session.run()`, `Tensor.eval()`, or `Operation.run()`.
 
 For example:
 
@@ -101,7 +101,7 @@ with tf.Session() as sess:
   print(sess.run(y, feed_dict={
     x: (indices, values, shape)}))  # Will succeed.
 
-  sp = tf.SparseTensor(indices=indices, values=values, shape=shape)
+  sp = tf.SparseTensor(indices=indices, values=values, dense_shape=shape)
   sp_value = sp.eval(session)
   print(sess.run(y, feed_dict={x: sp_value}))  # Will succeed.
 ```
@@ -1232,10 +1232,10 @@ Note that we allow leading and trailing spaces with int or float field.
 ##### Args:
 
 
-*  <b>`records`</b>: An `Output` of type `string`.
+*  <b>`records`</b>: A `Tensor` of type `string`.
     Each string is a record/row in the csv and all records should have
     the same format.
-*  <b>`record_defaults`</b>: A list of `Output` objects with types from: `float32`, `int32`, `int64`, `string`.
+*  <b>`record_defaults`</b>: A list of `Tensor` objects with types from: `float32`, `int32`, `int64`, `string`.
     One tensor per column of the input record, with either a
     scalar default value for that column or empty if the column is required.
 *  <b>`field_delim`</b>: An optional `string`. Defaults to `","`.
@@ -1244,7 +1244,7 @@ Note that we allow leading and trailing spaces with int or float field.
 
 ##### Returns:
 
-  A list of `Output` objects. Has the same type as `record_defaults`.
+  A list of `Tensor` objects. Has the same type as `record_defaults`.
   Each tensor will have the same shape as records.
 
 
@@ -1257,7 +1257,7 @@ Reinterpret the bytes of a string as a vector of numbers.
 ##### Args:
 
 
-*  <b>`bytes`</b>: An `Output` of type `string`.
+*  <b>`bytes`</b>: A `Tensor` of type `string`.
     All the elements must have the same length.
 *  <b>`out_type`</b>: A `tf.DType` from: `tf.half, tf.float32, tf.float64, tf.int32, tf.uint8, tf.int16, tf.int8, tf.int64`.
 *  <b>`little_endian`</b>: An optional `bool`. Defaults to `True`.
@@ -1268,7 +1268,7 @@ Reinterpret the bytes of a string as a vector of numbers.
 
 ##### Returns:
 
-  A `Output` of type `out_type`.
+  A `Tensor` of type `out_type`.
   A Tensor with one more dimension than the input `bytes`.  The
   added dimension will have size equal to the length of the elements
   of `bytes` divided by the number of bytes to represent `out_type`.
@@ -1460,6 +1460,89 @@ Alias for field number 0
 
 - - -
 
+### `class tf.SparseFeature` {#SparseFeature}
+
+Configuration for parsing a sparse input feature.
+
+Fields:
+  index_key: Name of index feature.  The underlying feature's type must
+    be `int64` and its length must always match that of the `value_key`
+    feature.
+  value_key: Name of value feature.  The underlying feature's type must
+    be `dtype` and its length must always match that of the `index_key`
+    feature.
+  dtype: Data type of the `value_key` feature.
+  size: A Python int to specify a dimension of the dense shape. Each value in
+    the `index_key` feature must be in `[0, size)`.
+  already_sorted: A Python boolean to specify whether the values in
+    `index_key` are already sorted. If so skip sorting.
+    False by default (optional).
+- - -
+
+#### `tf.SparseFeature.__getnewargs__()` {#SparseFeature.__getnewargs__}
+
+Return self as a plain tuple.  Used by copy and pickle.
+
+
+- - -
+
+#### `tf.SparseFeature.__getstate__()` {#SparseFeature.__getstate__}
+
+Exclude the OrderedDict from pickling
+
+
+- - -
+
+#### `tf.SparseFeature.__new__(_cls, index_key, value_key, dtype, size, already_sorted=False)` {#SparseFeature.__new__}
+
+Create new instance of SparseFeature(index_key, value_key, dtype, size, already_sorted)
+
+
+- - -
+
+#### `tf.SparseFeature.__repr__()` {#SparseFeature.__repr__}
+
+Return a nicely formatted representation string
+
+
+- - -
+
+#### `tf.SparseFeature.already_sorted` {#SparseFeature.already_sorted}
+
+Alias for field number 4
+
+
+- - -
+
+#### `tf.SparseFeature.dtype` {#SparseFeature.dtype}
+
+Alias for field number 2
+
+
+- - -
+
+#### `tf.SparseFeature.index_key` {#SparseFeature.index_key}
+
+Alias for field number 0
+
+
+- - -
+
+#### `tf.SparseFeature.size` {#SparseFeature.size}
+
+Alias for field number 3
+
+
+- - -
+
+#### `tf.SparseFeature.value_key` {#SparseFeature.value_key}
+
+Alias for field number 1
+
+
+
+- - -
+
 ### `tf.parse_example(serialized, features, name=None, example_names=None)` {#parse_example}
 
 Parses `Example` protos into a `dict` of tensors.
@@ -1469,19 +1552,28 @@ protos given in `serialized`.
 
 `example_names` may contain descriptive names for the corresponding serialized
 protos. These may be useful for debugging purposes, but they have no effect on
-the output. If not `None`, `example_names` must be the same length as `serialized`.
+the output. If not `None`, `example_names` must be the same length as
+`serialized`.
 
-This op parses serialized examples into a dictionary mapping keys to `Output`
-and `SparseTensor` objects. `features` is a dict from keys to `VarLenFeature`
-and `FixedLenFeature` objects. Each `VarLenFeature` is mapped to a
-`SparseTensor`, and each `FixedLenFeature` is mapped to an `Output`.
+This op parses serialized examples into a dictionary mapping keys to `Tensor`
+and `SparseTensor` objects. `features` is a dict from keys to `VarLenFeature`,
+`SparseFeature`, and `FixedLenFeature` objects. Each `VarLenFeature`
+and `SparseFeature` is mapped to a `SparseTensor`, and each
+`FixedLenFeature` is mapped to a `Tensor`.
 
 Each `VarLenFeature` maps to a `SparseTensor` of the specified type
 representing a ragged matrix. Its indices are `[batch, index]` where `batch`
 is the batch entry the value is from in `serialized`, and `index` is the
 value's index in the list of values associated with that feature and example.
 
-Each `FixedLenFeature` `df` maps to an `Output` of the specified type (or
+Each `SparseFeature` maps to a `SparseTensor` of the specified type
+representing a sparse matrix of shape
+`(serialized.size(), SparseFeature.size)`. Its indices are `[batch, index]`
+where `batch` is the batch entry the value is from in `serialized`, and
+`index` is the value's index is given by the values in the
+`SparseFeature.index_key` feature column.
+
+Each `FixedLenFeature` `df` maps to a `Tensor` of the specified type (or
 `tf.float32` if not specified) and shape `(serialized.size(),) + df.shape`.
 
 `FixedLenFeature` entries with a `default_value` are optional. With no default
@@ -1509,7 +1601,7 @@ then the output will look like:
 ```
 {"ft": SparseTensor(indices=[[0, 0], [0, 1], [2, 0]],
                     values=[1.0, 2.0, 3.0],
-                    shape=(3, 2)) }
+                    dense_shape=(3, 2)) }
 ```
 
 Given two `Example` input protos in `serialized`:
@@ -1546,15 +1638,15 @@ Then the output is a dictionary:
   "kw": SparseTensor(
       indices=[[0, 0], [0, 1], [1, 0]],
       values=["knit", "big", "emmy"]
-      shape=[2, 2]),
+      dense_shape=[2, 2]),
   "dank": SparseTensor(
       indices=[[1, 0]],
       values=[42],
-      shape=[2, 1]),
+      dense_shape=[2, 1]),
   "gps": SparseTensor(
       indices=[],
       values=[],
-      shape=[2, 0]),
+      dense_shape=[2, 0]),
 }
 ```
 
@@ -1592,20 +1684,56 @@ And the expected output is:
 }
 ```
 
+Given two `Example` input protos in `serialized`:
+
+```
+[
+  features {
+    feature { key: "val" value { float_list { value: [ 0.5, -1.0 ] } } }
+    feature { key: "ix" value { int64_list { value: [ 3, 20 ] } } }
+  },
+  features {
+    feature { key: "val" value { float_list { value: [ 0.0 ] } } }
+    feature { key: "ix" value { int64_list { value: [ 42 ] } } }
+  }
+]
+```
+
+And arguments
+
+```
+example_names: ["input0", "input1"],
+features: {
+    "sparse": SparseFeature(
+        index_key="ix", value_key="val", dtype=tf.float32, size=100),
+}
+```
+
+Then the output is a dictionary:
+
+```python
+{
+  "sparse": SparseTensor(
+      indices=[[0, 3], [0, 20], [1, 42]],
+      values=[0.5, -1.0, 0.0]
+      dense_shape=[2, 100]),
+}
+```
+
 ##### Args:
 
 
 *  <b>`serialized`</b>: A vector (1-D Tensor) of strings, a batch of binary
     serialized `Example` protos.
-*  <b>`features`</b>: A `dict` mapping feature keys to `FixedLenFeature` or
-    `VarLenFeature` values.
+*  <b>`features`</b>: A `dict` mapping feature keys to `FixedLenFeature`,
+    `VarLenFeature`, and `SparseFeature` values.
 *  <b>`name`</b>: A name for this operation (optional).
 *  <b>`example_names`</b>: A vector (1-D Tensor) of strings (optional), the names of
     the serialized protos in the batch.
 
 ##### Returns:
 
-  A `dict` mapping feature keys to `Output` and `SparseTensor` values.
+  A `dict` mapping feature keys to `Tensor` and `SparseTensor` values.
 
 ##### Raises:
 
@@ -1621,7 +1749,7 @@ Parses a single `Example` proto.
 
 Similar to `parse_example`, except:
 
-For dense tensors, the returned `Output` is identical to the output of
+For dense tensors, the returned `Tensor` is identical to the output of
 `parse_example`, except there is no batch dimension, the output shape is the
 same as the shape given in `dense_shape`.
 
@@ -1629,6 +1757,9 @@ For `SparseTensor`s, the first (batch) column of the indices matrix is removed
 (the indices matrix is a column vector), the values vector is unchanged, and
 the first (`batch_size`) entry of the shape vector is removed (it is now a
 single element vector).
+
+One might see performance advantages by batching `Example` protos with
+`parse_example` instead of using this function directly.
 
 ##### Args:
 
@@ -1643,7 +1774,7 @@ single element vector).
 
 ##### Returns:
 
-  A `dict` mapping feature keys to `Output` and `SparseTensor` values.
+  A `dict` mapping feature keys to `Tensor` and `SparseTensor` values.
 
 ##### Raises:
 
@@ -1660,7 +1791,7 @@ Transforms a serialized tensorflow.TensorProto proto into a Tensor.
 ##### Args:
 
 
-*  <b>`serialized`</b>: An `Output` of type `string`.
+*  <b>`serialized`</b>: A `Tensor` of type `string`.
     A scalar string containing a serialized TensorProto proto.
 *  <b>`out_type`</b>: A `tf.DType`.
     The type of the serialized tensor.  The provided type must match the
@@ -1669,7 +1800,7 @@ Transforms a serialized tensorflow.TensorProto proto into a Tensor.
 
 ##### Returns:
 
-  A `Output` of type `out_type`. A Tensor of type `out_type`.
+  A `Tensor` of type `out_type`. A Tensor of type `out_type`.
 
 
 - - -
@@ -1688,14 +1819,14 @@ Example-parsing ops.
 ##### Args:
 
 
-*  <b>`json_examples`</b>: An `Output` of type `string`.
+*  <b>`json_examples`</b>: A `Tensor` of type `string`.
     Each string is a JSON object serialized according to the JSON
     mapping of the Example proto.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output` of type `string`.
+  A `Tensor` of type `string`.
   Each string is a binary Example protocol buffer corresponding
   to the respective element of `json_examples`.
 
@@ -1846,7 +1977,7 @@ session is [closed](../../api_docs/python/client.md#Session.close),
 ##### Args:
 
 
-*  <b>`n`</b>: A scalar `Output` containing the number of elements to dequeue.
+*  <b>`n`</b>: A scalar `Tensor` containing the number of elements to dequeue.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
@@ -1957,7 +2088,7 @@ Otherwise the behavior is identical to `dequeue_many`.
 ##### Args:
 
 
-*  <b>`n`</b>: A scalar `Output` containing the number of elements to dequeue.
+*  <b>`n`</b>: A scalar `Tensor` containing the number of elements to dequeue.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
@@ -2699,12 +2830,12 @@ basename portion of the pattern, not in the directory portion.
 ##### Args:
 
 
-*  <b>`pattern`</b>: An `Output` of type `string`. A (scalar) shell wildcard pattern.
+*  <b>`pattern`</b>: A `Tensor` of type `string`. A (scalar) shell wildcard pattern.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output` of type `string`. A vector of matching filenames.
+  A `Tensor` of type `string`. A vector of matching filenames.
 
 
 - - -
@@ -2716,12 +2847,12 @@ Reads and outputs the entire contents of the input filename.
 ##### Args:
 
 
-*  <b>`filename`</b>: An `Output` of type `string`.
+*  <b>`filename`</b>: A `Tensor` of type `string`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output` of type `string`.
+  A `Tensor` of type `string`.
 
 
 - - -
@@ -2733,9 +2864,9 @@ Writes contents to the file at input filename. Creates file if not existing.
 ##### Args:
 
 
-*  <b>`filename`</b>: An `Output` of type `string`.
+*  <b>`filename`</b>: A `Tensor` of type `string`.
     scalar. The name of the file to which we write the contents.
-*  <b>`contents`</b>: An `Output` of type `string`.
+*  <b>`contents`</b>: A `Tensor` of type `string`.
     scalar. The content to be written to the output file.
 *  <b>`name`</b>: A name for the operation (optional).
 
@@ -2779,13 +2910,13 @@ Save the list of files matching pattern, so it is only computed once.
 
 Returns tensor `num_epochs` times and then raises an `OutOfRange` error.
 
-Note: creates local counter `epochs`. Use `local_variable_initializer()` to
+Note: creates local counter `epochs`. Use `local_variables_initializer()` to
 initialize local variables.
 
 ##### Args:
 
 
-*  <b>`tensor`</b>: Any `Output`.
+*  <b>`tensor`</b>: Any `Tensor`.
 *  <b>`num_epochs`</b>: A positive integer (optional).  If specified, limits the number
     of steps the output tensor may be evaluated.
 *  <b>`name`</b>: A name for the operations (optional).
@@ -2807,7 +2938,7 @@ initialize local variables.
 Output the rows of `input_tensor` to a queue for an input pipeline.
 
 Note: if `num_epochs` is not `None`, this function creates local counter
-`epochs`. Use `local_variable_initializer()` to initialize local variables.
+`epochs`. Use `local_variables_initializer()` to initialize local variables.
 
 ##### Args:
 
@@ -2852,7 +2983,7 @@ Note: if `num_epochs` is not `None`, this function creates local counter
 Produces the integers from 0 to limit-1 in a queue.
 
 Note: if `num_epochs` is not `None`, this function creates local counter
-`epochs`. Use `local_variable_initializer()` to initialize local variables.
+`epochs`. Use `local_variables_initializer()` to initialize local variables.
 
 ##### Args:
 
@@ -2880,7 +3011,7 @@ Note: if `num_epochs` is not `None`, this function creates local counter
 
 ### `tf.train.slice_input_producer(tensor_list, num_epochs=None, shuffle=True, seed=None, capacity=32, shared_name=None, name=None)` {#slice_input_producer}
 
-Produces a slice of each `Output` in `tensor_list`.
+Produces a slice of each `Tensor` in `tensor_list`.
 
 Implemented using a Queue -- a `QueueRunner` for the Queue
 is added to the current `Graph`'s `QUEUE_RUNNER` collection.
@@ -2888,7 +3019,7 @@ is added to the current `Graph`'s `QUEUE_RUNNER` collection.
 ##### Args:
 
 
-*  <b>`tensor_list`</b>: A list of `Output` objects. Every `Output` in
+*  <b>`tensor_list`</b>: A list of `Tensor` objects. Every `Tensor` in
     `tensor_list` must have the same size in the first dimension.
 *  <b>`num_epochs`</b>: An integer (optional). If specified, `slice_input_producer`
     produces each slice `num_epochs` times before generating
@@ -2921,7 +3052,7 @@ is added to the current `Graph`'s `QUEUE_RUNNER` collection.
 Output strings (e.g. filenames) to a queue for an input pipeline.
 
 Note: if `num_epochs` is not `None`, this function creates local counter
-`epochs`. Use `local_variable_initializer()` to initialize local variables.
+`epochs`. Use `local_variables_initializer()` to initialize local variables.
 
 ##### Args:
 
@@ -2972,7 +3103,7 @@ single subgraph producing examples but you want to run it in *N* threads
 (where you increase *N* until it can keep the queue full).  Use
 [`batch_join`](#batch_join) or [`shuffle_batch_join`](#shuffle_batch_join)
 if you have *N* different subgraphs producing examples to batch and you
-want them run by *N* threads.
+want them run by *N* threads. Use `maybe_*` to enqueue conditionally.
 
 - - -
 
@@ -3025,12 +3156,55 @@ In addition, all output tensors' static shapes, as accessed via the
 operations that depend on fixed batch_size would fail.
 
 Note: if `num_epochs` is not `None`, this function creates local counter
-`epochs`. Use `local_variable_initializer()` to initialize local variables.
+`epochs`. Use `local_variables_initializer()` to initialize local variables.
 
 ##### Args:
 
 
 *  <b>`tensors`</b>: The list or dictionary of tensors to enqueue.
+*  <b>`batch_size`</b>: The new batch size pulled from the queue.
+*  <b>`num_threads`</b>: The number of threads enqueuing `tensors`.
+*  <b>`capacity`</b>: An integer. The maximum number of elements in the queue.
+*  <b>`enqueue_many`</b>: Whether each tensor in `tensors` is a single example.
+*  <b>`shapes`</b>: (Optional) The shapes for each example.  Defaults to the
+    inferred shapes for `tensors`.
+*  <b>`dynamic_pad`</b>: Boolean.  Allow variable dimensions in input shapes.
+    The given dimensions are padded upon dequeue so that tensors within a
+    batch have the same shapes.
+*  <b>`allow_smaller_final_batch`</b>: (Optional) Boolean. If `True`, allow the final
+    batch to be smaller if there are insufficient items left in the queue.
+*  <b>`shared_name`</b>: (Optional). If set, this queue will be shared under the given
+    name across multiple sessions.
+*  <b>`name`</b>: (Optional) A name for the operations.
+
+##### Returns:
+
+  A list or dictionary of tensors with the same types as `tensors` (except if
+  the input is a list of one element, then it returns a tensor, not a list).
+
+##### Raises:
+
+
+*  <b>`ValueError`</b>: If the `shapes` are not specified, and cannot be
+    inferred from the elements of `tensors`.
+
+
+- - -
+
+### `tf.train.maybe_batch(tensors, keep_input, batch_size, num_threads=1, capacity=32, enqueue_many=False, shapes=None, dynamic_pad=False, allow_smaller_final_batch=False, shared_name=None, name=None)` {#maybe_batch}
+
+Conditionally creates batches of tensors based on `keep_input`.
+
+See docstring in `batch` for more details.
+
+##### Args:
+
+
+*  <b>`tensors`</b>: The list or dictionary of tensors to enqueue.
+*  <b>`keep_input`</b>: A `bool` scalar Tensor.  This tensor controls whether the input
+    is added to the queue or not.  If it evaluates `True`, then `tensors` are
+    added to the queue; otherwise they are dropped.  This tensor essentially
+    acts as a filtering mechanism.
 *  <b>`batch_size`</b>: The new batch size pulled from the queue.
 *  <b>`num_threads`</b>: The number of threads enqueuing `tensors`.
 *  <b>`capacity`</b>: An integer. The maximum number of elements in the queue.
@@ -3150,6 +3324,49 @@ operations that depend on fixed batch_size would fail.
 
 - - -
 
+### `tf.train.maybe_batch_join(tensors_list, keep_input, batch_size, capacity=32, enqueue_many=False, shapes=None, dynamic_pad=False, allow_smaller_final_batch=False, shared_name=None, name=None)` {#maybe_batch_join}
+
+Runs a list of tensors to conditionally fill a queue to create batches.
+
+See docstring in `batch_join` for more details.
+
+##### Args:
+
+
+*  <b>`tensors_list`</b>: A list of tuples or dictionaries of tensors to enqueue.
+*  <b>`keep_input`</b>: A `bool` scalar Tensor.  This tensor controls whether the input
+    is added to the queue or not.  If it evaluates `True`, then `tensors` are
+    added to the queue; otherwise they are dropped.  This tensor essentially
+    acts as a filtering mechanism.
+*  <b>`batch_size`</b>: An integer. The new batch size pulled from the queue.
+*  <b>`capacity`</b>: An integer. The maximum number of elements in the queue.
+*  <b>`enqueue_many`</b>: Whether each tensor in `tensor_list_list` is a single
+    example.
+*  <b>`shapes`</b>: (Optional) The shapes for each example.  Defaults to the
+    inferred shapes for `tensor_list_list[i]`.
+*  <b>`dynamic_pad`</b>: Boolean.  Allow variable dimensions in input shapes.
+    The given dimensions are padded upon dequeue so that tensors within a
+    batch have the same shapes.
+*  <b>`allow_smaller_final_batch`</b>: (Optional) Boolean. If `True`, allow the final
+    batch to be smaller if there are insufficient items left in the queue.
+*  <b>`shared_name`</b>: (Optional) If set, this queue will be shared under the given
+    name across multiple sessions.
+*  <b>`name`</b>: (Optional) A name for the operations.
+
+##### Returns:
+
+  A list or dictionary of tensors with the same number and types as
+  `tensors_list[i]`.
+
+##### Raises:
+
+
+*  <b>`ValueError`</b>: If the `shapes` are not specified, and cannot be
+    inferred from the elements of `tensor_list_list`.
+
+
+- - -
+
 ### `tf.train.shuffle_batch(tensors, batch_size, capacity, min_after_dequeue, num_threads=1, seed=None, enqueue_many=False, shapes=None, allow_smaller_final_batch=False, shared_name=None, name=None)` {#shuffle_batch}
 
 Creates batches by randomly shuffling tensors.
@@ -3205,7 +3422,7 @@ In addition, all output tensors' static shapes, as accessed via the
 operations that depend on fixed batch_size would fail.
 
 Note: if `num_epochs` is not `None`, this function creates local counter
-`epochs`. Use `local_variable_initializer()` to initialize local variables.
+`epochs`. Use `local_variables_initializer()` to initialize local variables.
 
 ##### Args:
 
@@ -3215,6 +3432,48 @@ Note: if `num_epochs` is not `None`, this function creates local counter
 *  <b>`capacity`</b>: An integer. The maximum number of elements in the queue.
 *  <b>`min_after_dequeue`</b>: Minimum number elements in the queue after a
     dequeue, used to ensure a level of mixing of elements.
+*  <b>`num_threads`</b>: The number of threads enqueuing `tensor_list`.
+*  <b>`seed`</b>: Seed for the random shuffling within the queue.
+*  <b>`enqueue_many`</b>: Whether each tensor in `tensor_list` is a single example.
+*  <b>`shapes`</b>: (Optional) The shapes for each example.  Defaults to the
+    inferred shapes for `tensor_list`.
+*  <b>`allow_smaller_final_batch`</b>: (Optional) Boolean. If `True`, allow the final
+    batch to be smaller if there are insufficient items left in the queue.
+*  <b>`shared_name`</b>: (Optional) If set, this queue will be shared under the given
+    name across multiple sessions.
+*  <b>`name`</b>: (Optional) A name for the operations.
+
+##### Returns:
+
+  A list or dictionary of tensors with the types as `tensors`.
+
+##### Raises:
+
+
+*  <b>`ValueError`</b>: If the `shapes` are not specified, and cannot be
+    inferred from the elements of `tensors`.
+
+
+- - -
+
+### `tf.train.maybe_shuffle_batch(tensors, batch_size, capacity, min_after_dequeue, keep_input, num_threads=1, seed=None, enqueue_many=False, shapes=None, allow_smaller_final_batch=False, shared_name=None, name=None)` {#maybe_shuffle_batch}
+
+Creates batches by randomly shuffling conditionally-enqueued tensors.
+
+See docstring in `shuffle_batch` for more details.
+
+##### Args:
+
+
+*  <b>`tensors`</b>: The list or dictionary of tensors to enqueue.
+*  <b>`batch_size`</b>: The new batch size pulled from the queue.
+*  <b>`capacity`</b>: An integer. The maximum number of elements in the queue.
+*  <b>`min_after_dequeue`</b>: Minimum number elements in the queue after a
+    dequeue, used to ensure a level of mixing of elements.
+*  <b>`keep_input`</b>: A `bool` scalar Tensor.  This tensor controls whether the input
+    is added to the queue or not.  If it evaluates `True`, then `tensors` are
+    added to the queue; otherwise they are dropped.  This tensor essentially
+    acts as a filtering mechanism.
 *  <b>`num_threads`</b>: The number of threads enqueuing `tensor_list`.
 *  <b>`seed`</b>: Seed for the random shuffling within the queue.
 *  <b>`enqueue_many`</b>: Whether each tensor in `tensor_list` is a single example.
@@ -3294,6 +3553,49 @@ operations that depend on fixed batch_size would fail.
 *  <b>`capacity`</b>: An integer. The maximum number of elements in the queue.
 *  <b>`min_after_dequeue`</b>: Minimum number elements in the queue after a
     dequeue, used to ensure a level of mixing of elements.
+*  <b>`seed`</b>: Seed for the random shuffling within the queue.
+*  <b>`enqueue_many`</b>: Whether each tensor in `tensor_list_list` is a single
+    example.
+*  <b>`shapes`</b>: (Optional) The shapes for each example.  Defaults to the
+    inferred shapes for `tensors_list[i]`.
+*  <b>`allow_smaller_final_batch`</b>: (Optional) Boolean. If `True`, allow the final
+    batch to be smaller if there are insufficient items left in the queue.
+*  <b>`shared_name`</b>: (optional). If set, this queue will be shared under the given
+    name across multiple sessions.
+*  <b>`name`</b>: (Optional) A name for the operations.
+
+##### Returns:
+
+  A list or dictionary of tensors with the same number and types as
+  `tensors_list[i]`.
+
+##### Raises:
+
+
+*  <b>`ValueError`</b>: If the `shapes` are not specified, and cannot be
+    inferred from the elements of `tensors_list`.
+
+
+- - -
+
+### `tf.train.maybe_shuffle_batch_join(tensors_list, batch_size, capacity, min_after_dequeue, keep_input, seed=None, enqueue_many=False, shapes=None, allow_smaller_final_batch=False, shared_name=None, name=None)` {#maybe_shuffle_batch_join}
+
+Create batches by randomly shuffling conditionally-enqueued tensors.
+
+See docstring in `shuffle_batch_join` for more details.
+
+##### Args:
+
+
+*  <b>`tensors_list`</b>: A list of tuples or dictionaries of tensors to enqueue.
+*  <b>`batch_size`</b>: An integer. The new batch size pulled from the queue.
+*  <b>`capacity`</b>: An integer. The maximum number of elements in the queue.
+*  <b>`min_after_dequeue`</b>: Minimum number elements in the queue after a
+    dequeue, used to ensure a level of mixing of elements.
+*  <b>`keep_input`</b>: A `bool` scalar Tensor.  If provided, this tensor controls
+    whether the input is added to the queue or not.  If it evaluates `True`,
+    then `tensors_list` are added to the queue; otherwise they are dropped.
+    This tensor essentially acts as a filtering mechanism.
 *  <b>`seed`</b>: Seed for the random shuffling within the queue.
 *  <b>`enqueue_many`</b>: Whether each tensor in `tensor_list_list` is a single
     example.

@@ -22,6 +22,38 @@ using shape_inference::DimensionHandle;
 using shape_inference::InferenceContext;
 using shape_inference::ShapeHandle;
 
+REGISTER_OP("VariableV2")
+    .Output("ref: Ref(dtype)")
+    .Attr("shape: shape")
+    .Attr("dtype: type")
+    .Attr("container: string = ''")
+    .Attr("shared_name: string = ''")
+    .SetIsStateful()
+    .SetShapeFn([](InferenceContext* c) {
+      TensorShapeProto shape_proto;
+      TF_RETURN_IF_ERROR(c->GetAttr("shape", &shape_proto));
+      ShapeHandle output_shape;
+      TF_RETURN_IF_ERROR(
+          c->MakeShapeFromShapeProto(shape_proto, &output_shape));
+      c->set_output(0, output_shape);
+      return Status::OK();
+    })
+    .Doc(R"doc(
+Holds state in the form of a tensor that persists across steps.
+
+Outputs a ref to the tensor state so it may be read or modified.
+TODO(zhifengc/mrry): Adds a pointer to a more detail document
+about sharing states in tensorflow.
+
+ref: A reference to the variable tensor.
+shape: The shape of the variable tensor.
+dtype: The type of elements in the variable tensor.
+container: If non-empty, this variable is placed in the given container.
+        Otherwise, a default container is used.
+shared_name: If non-empty, this variable is named in the given bucket
+             with this shared_name. Otherwise, the node name is used instead.
+)doc");
+
 REGISTER_OP("Variable")
     .Output("ref: Ref(dtype)")
     .Attr("shape: shape")
@@ -47,21 +79,7 @@ REGISTER_OP("Variable")
       c->set_output(0, out);
       return Status::OK();
     })
-    .Doc(R"doc(
-Holds state in the form of a tensor that persists across steps.
-
-Outputs a ref to the tensor state so it may be read or modified.
-TODO(zhifengc/mrry): Adds a pointer to a more detail document
-about sharing states in tensorflow.
-
-ref: A reference to the variable tensor.
-shape: The shape of the variable tensor.
-dtype: The type of elements in the variable tensor.
-container: If non-empty, this variable is placed in the given container.
-        Otherwise, a default container is used.
-shared_name: If non-empty, this variable is named in the given bucket
-             with this shared_name. Otherwise, the node name is used instead.
-)doc");
+    .Doc("Use VariableV2 instead.");
 
 REGISTER_OP("IsVariableInitialized")
     .Input("ref: Ref(dtype)")
@@ -262,7 +280,7 @@ This operation outputs `ref` after the update is done.
 This makes it easier to chain operations that need to use the reset value.
 
 If values in `ref` is to be updated more than once, because there are
-duplicate entires in `indices`, the order at which the updates happen
+duplicate entries in `indices`, the order at which the updates happen
 for each value is undefined.
 
 Requires `updates.shape = indices.shape + ref.shape[1:]`.
@@ -516,7 +534,7 @@ REGISTER_OP("ScatterNdUpdate")
 Applies sparse `updates` to individual values or slices within a given
 variable according to `indices`.
 
-`ref` is an `Output` with rank `P` and `indices` is an `Output` of rank `Q`.
+`ref` is a `Tensor` with rank `P` and `indices` is a `Tensor` of rank `Q`.
 
 `indices` must be integer tensor, containing indices into `ref`.
 It must be shape `[d_0, ..., d_{Q-2}, K]` where `0 < K <= P`.
@@ -525,7 +543,7 @@ The innermost dimension of `indices` (with length `K`) corresponds to
 indices into elements (if `K = P`) or slices (if `K < P`) along the `K`th
 dimension of `ref`.
 
-`updates` is `Output` of rank `Q-1+P-K` with shape:
+`updates` is `Tensor` of rank `Q-1+P-K` with shape:
 
 ```
 [d_0, ..., d_{Q-2}, ref.shape[K], ..., ref.shape[P-1]].
@@ -573,7 +591,7 @@ REGISTER_OP("ScatterNdAdd")
 Applies sparse addition between `updates` and individual values or slices
 within a given variable according to `indices`.
 
-`ref` is an `Output` with rank `P` and `indices` is an `Output` of rank `Q`.
+`ref` is a `Tensor` with rank `P` and `indices` is a `Tensor` of rank `Q`.
 
 `indices` must be integer tensor, containing indices into `ref`.
 It must be shape `[d_0, ..., d_{Q-2}, K]` where `0 < K <= P`.
@@ -582,7 +600,7 @@ The innermost dimension of `indices` (with length `K`) corresponds to
 indices into elements (if `K = P`) or slices (if `K < P`) along the `K`th
 dimension of `ref`.
 
-`updates` is `Output` of rank `Q-1+P-K` with shape:
+`updates` is `Tensor` of rank `Q-1+P-K` with shape:
 
 ```
 [d_0, ..., d_{Q-2}, ref.shape[K], ..., ref.shape[P-1]].
@@ -630,7 +648,7 @@ REGISTER_OP("ScatterNdSub")
 Applies sparse subtraction between `updates` and individual values or slices
 within a given variable according to `indices`.
 
-`ref` is an `Output` with rank `P` and `indices` is an `Output` of rank `Q`.
+`ref` is a `Tensor` with rank `P` and `indices` is a `Tensor` of rank `Q`.
 
 `indices` must be integer tensor, containing indices into `ref`.
 It must be shape `[d_0, ..., d_{Q-2}, K]` where `0 < K <= P`.
@@ -639,7 +657,7 @@ The innermost dimension of `indices` (with length `K`) corresponds to
 indices into elements (if `K = P`) or slices (if `K < P`) along the `K`th
 dimension of `ref`.
 
-`updates` is `Output` of rank `Q-1+P-K` with shape:
+`updates` is `Tensor` of rank `Q-1+P-K` with shape:
 
 ```
 [d_0, ..., d_{Q-2}, ref.shape[K], ..., ref.shape[P-1]].
@@ -690,7 +708,7 @@ output_ref: Same as ref. Returned as a convenience for operations that want
 //         R"doc(Applies sparse subtraction between `updates` and individual
 //         values or slices within a given variable according to `indices`.
 
-// `ref` is an `Output` with rank `P` and `indices` is an `Output` of rank `Q`.
+// `ref` is a `Tensor` with rank `P` and `indices` is a `Tensor` of rank `Q`.
 
 // `indices` must be integer tensor, containing indices into `ref`.
 // It must be shape `[d_0, ..., d_{Q-2}, K]` where `0 < K <= P`.
@@ -699,7 +717,7 @@ output_ref: Same as ref. Returned as a convenience for operations that want
 // indices into elements (if `K = P`) or slices (if `K < P`) along the `K`th
 // dimension of `ref`.
 
-// `updates` is `Output` of rank `Q-1+P-K` with shape:
+// `updates` is `Tensor` of rank `Q-1+P-K` with shape:
 
 // ```
 // [d_0, ..., d_{Q-2}, ref.shape[K], ..., ref.shape[P-1]].
@@ -746,7 +764,7 @@ output_ref: Same as ref. Returned as a convenience for operations that want
 //         R"doc(Applies sparse subtraction between `updates` and individual
 //         values or slices within a given variable according to `indices`.
 
-// `ref` is an `Output` with rank `P` and `indices` is an `Output` of rank `Q`.
+// `ref` is a `Tensor` with rank `P` and `indices` is a `Tensor` of rank `Q`.
 
 // `indices` must be integer tensor, containing indices into `ref`.
 // It must be shape `[d_0, ..., d_{Q-2}, K]` where `0 < K <= P`.
@@ -755,7 +773,7 @@ output_ref: Same as ref. Returned as a convenience for operations that want
 // indices into elements (if `K = P`) or slices (if `K < P`) along the `K`th
 // dimension of `ref`.
 
-// `updates` is `Output` of rank `Q-1+P-K` with shape:
+// `updates` is `Tensor` of rank `Q-1+P-K` with shape:
 
 // ```
 // [d_0, ..., d_{Q-2}, ref.shape[K], ..., ref.shape[P-1]].

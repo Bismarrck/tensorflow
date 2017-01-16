@@ -42,7 +42,7 @@ batch_size = 32
 num_unroll = 20
 num_enqueue_threads = 3
 lstm_size = 8
-cell = tf.nn.rnn_cell.BasicLSTMCell(num_units=lstm_size)
+cell = tf.contrib.rnn.BasicLSTMCell(num_units=lstm_size)
 
 key, sequences, context = my_parser(raw_data)
 initial_state_values = tf.zeros((state_size,), dtype=tf.float32)
@@ -60,10 +60,10 @@ batch = tf.batch_sequences_with_states(
 inputs = batch.sequences["input"]
 context_label = batch.context["label"]
 
-inputs_by_time = tf.split(1, num_unroll, inputs)
+inputs_by_time = tf.split(value=inputs, num_or_size_splits=num_unroll, axis=1)
 assert len(inputs_by_time) == num_unroll
 
-lstm_output, _ = tf.nn.state_saving_rnn(
+lstm_output, _ = tf.contrib.rnn.static_state_saving_rnn(
   cell,
   inputs_by_time,
   state_saver=batch,
@@ -82,12 +82,12 @@ while True:
 ##### Args:
 
 
-*  <b>`input_key`</b>: A string scalar `Output`, the **unique** key for the given
+*  <b>`input_key`</b>: A string scalar `Tensor`, the **unique** key for the given
     input example.  This is used to keep track of the split minibatch elements
     of this input.  Batched keys of the current iteration are made
     accessible via the `key` property.  The shape of `input_key` (scalar) must
     be fully specified.
-*  <b>`input_sequences`</b>: A dict mapping string names to `Output` values.  The values
+*  <b>`input_sequences`</b>: A dict mapping string names to `Tensor` values.  The values
     must all have matching first dimension, called `value_length`. They may
     vary from input to input. The remainder of the shape (other than the first
     dimension) must be fully specified.
@@ -99,7 +99,7 @@ while True:
     **Note**: if `pad=False`, then `value_length` must always be a multiple
       of `num_unroll`.
 
-*  <b>`input_context`</b>: A dict mapping string names to `Output` values.  The values
+*  <b>`input_context`</b>: A dict mapping string names to `Tensor` values.  The values
     are treated as "global" across all time splits of the given input example,
     and will be copied across for all minibatch elements accordingly.
     Batched and copied context of the current iteration are made
@@ -107,7 +107,7 @@ while True:
 
     **Note**: All input_context values must have fully defined shapes.
 
-*  <b>`input_length`</b>: None or an int32 scalar `Output`, the length of the sequence
+*  <b>`input_length`</b>: None or an int32 scalar `Tensor`, the length of the sequence
     prior to padding. If `input_length=None` and `pad=True` then the length
     will be inferred and will be equal to `value_length`. If `pad=False` then
     `input_length` cannot be `None`: `input_length` must be specified. Its
@@ -125,7 +125,7 @@ while True:
 *  <b>`num_unroll`</b>: Python integer, how many time steps to unroll at a time.
     The input sequences of length k are then split into k / num_unroll many
     segments.
-*  <b>`batch_size`</b>: int or int32 scalar `Output`, how large minibatches should
+*  <b>`batch_size`</b>: int or int32 scalar `Tensor`, how large minibatches should
     be when accessing the `state()` method and `context`, `sequences`, etc,
     properties.
 *  <b>`num_threads`</b>: The int number of threads enqueuing input examples into a

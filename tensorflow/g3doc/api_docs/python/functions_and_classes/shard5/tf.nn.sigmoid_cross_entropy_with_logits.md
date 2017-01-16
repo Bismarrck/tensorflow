@@ -1,4 +1,4 @@
-### `tf.nn.sigmoid_cross_entropy_with_logits(logits, targets, name=None)` {#sigmoid_cross_entropy_with_logits}
+### `tf.nn.sigmoid_cross_entropy_with_logits(_sentinel=None, labels=None, logits=None, name=None)` {#sigmoid_cross_entropy_with_logits}
 
 Computes sigmoid cross entropy given `logits`.
 
@@ -7,7 +7,7 @@ class is independent and not mutually exclusive.  For instance, one could
 perform multilabel classification where a picture can contain both an elephant
 and a dog at the same time.
 
-For brevity, let `x = logits`, `z = targets`.  The logistic loss is
+For brevity, let `x = logits`, `z = labels`.  The logistic loss is
 
       z * -log(sigmoid(x)) + (1 - z) * -log(1 - sigmoid(x))
     = z * -log(1 / (1 + exp(-x))) + (1 - z) * -log(exp(-x) / (1 + exp(-x)))
@@ -27,22 +27,23 @@ equivalent formulation
 
     max(x, 0) - x * z + log(1 + exp(-abs(x)))
 
-`logits` and `targets` must have the same type and shape.
+`logits` and `labels` must have the same type and shape.
 
 ##### Args:
 
+  _sentinel: Used to prevent positional parameters. Internal, do not use.
 
-*  <b>`logits`</b>: An `Output` of type `float32` or `float64`.
-*  <b>`targets`</b>: An `Output` of the same type and shape as `logits`.
+*  <b>`labels`</b>: A `Tensor` of the same type and shape as `logits`.
+*  <b>`logits`</b>: A `Tensor` of type `float32` or `float64`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output` of the same shape as `logits` with the componentwise
+  A `Tensor` of the same shape as `logits` with the componentwise
   logistic losses.
 
 ##### Raises:
 
 
-*  <b>`ValueError`</b>: If `logits` and `targets` do not have the same shape.
+*  <b>`ValueError`</b>: If `logits` and `labels` do not have the same shape.
 

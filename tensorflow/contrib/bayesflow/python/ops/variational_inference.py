@@ -27,9 +27,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from tensorflow.contrib import distributions
 from tensorflow.contrib.bayesflow.python.ops import stochastic_graph as sg
 from tensorflow.contrib.bayesflow.python.ops import stochastic_tensor as st
+from tensorflow.contrib.distributions.python.ops import distribution
+from tensorflow.contrib.distributions.python.ops import kullback_leibler
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import math_ops
 from tensorflow.python.platform import tf_logging as logging
@@ -57,7 +58,7 @@ def register_prior(variational, prior):
   """
   if not isinstance(variational, st.StochasticTensor):
     raise TypeError("variational must be a StochasticTensor")
-  if not isinstance(prior, distributions.Distribution):
+  if not isinstance(prior, distribution.Distribution):
     raise TypeError("prior must be a Distribution")
   ops.add_to_collection(VI_PRIORS, (variational, prior))
 
@@ -84,8 +85,10 @@ class ELBOForms(object):
 
   @staticmethod
   def check_form(form):
-    if form not in {ELBOForms.default, ELBOForms.analytic_kl,
-                    ELBOForms.analytic_entropy, ELBOForms.sample}:
+    if form not in {
+        ELBOForms.default, ELBOForms.analytic_kl, ELBOForms.analytic_entropy,
+        ELBOForms.sample
+    }:
       raise TypeError("form must be an ELBOForms constant")
 
 
@@ -135,7 +138,7 @@ def elbo(log_likelihood,
   e.g. `q(Z) = q(z1)q(z2)q(z3)`.
 
   Args:
-    log_likelihood: `Output` log p(x|Z).
+    log_likelihood: `Tensor` log p(x|Z).
     variational_with_prior: dict from `StochasticTensor` q(Z) to
       `Distribution` p(Z). If `None`, defaults to all `StochasticTensor`
       objects upstream of `log_likelihood` with priors registered with
@@ -148,7 +151,7 @@ def elbo(log_likelihood,
     name: name to prefix ops with.
 
   Returns:
-    `Output` ELBO of the same type and shape as `log_likelihood`.
+    `Tensor` ELBO of the same type and shape as `log_likelihood`.
 
   Raises:
     TypeError: if variationals in `variational_with_prior` are not
@@ -181,7 +184,7 @@ def elbo_with_log_joint(log_joint,
   Because only the joint is specified, analytic KL is not available.
 
   Args:
-    log_joint: `Output` log p(x, Z).
+    log_joint: `Tensor` log p(x, Z).
     variational: list of `StochasticTensor` q(Z). If `None`, defaults to all
       `StochasticTensor` objects upstream of `log_joint`.
     keep_batch_dim: bool. Whether to keep the batch dimension when summing
@@ -192,7 +195,7 @@ def elbo_with_log_joint(log_joint,
     name: name to prefix ops with.
 
   Returns:
-    `Output` ELBO of the same type and shape as `log_joint`.
+    `Tensor` ELBO of the same type and shape as `log_joint`.
 
   Raises:
     TypeError: if variationals in `variational` are not `StochasticTensor`s.
@@ -224,15 +227,15 @@ def _elbo(form, log_likelihood, log_joint, variational_with_prior,
 
   Args:
     form: ELBOForms constant. Controls how the ELBO is computed.
-    log_likelihood: `Output` log p(x|Z).
-    log_joint: `Output` log p(x, Z).
+    log_likelihood: `Tensor` log p(x|Z).
+    log_joint: `Tensor` log p(x, Z).
     variational_with_prior: `dict<StochasticTensor, Distribution>`, varational
       distributions to prior distributions.
     keep_batch_dim: bool. Whether to keep the batch dimension when reducing
       the entropy/KL.
 
   Returns:
-    ELBO `Output` with same shape and dtype as `log_likelihood`/`log_joint`.
+    ELBO `Tensor` with same shape and dtype as `log_likelihood`/`log_joint`.
   """
   ELBOForms.check_form(form)
 
@@ -257,7 +260,7 @@ def _elbo(form, log_likelihood, log_joint, variational_with_prior,
     kl = None
     if log_joint is None and form in {ELBOForms.default, ELBOForms.analytic_kl}:
       try:
-        kl = distributions.kl(q, p)
+        kl = kullback_leibler.kl(q, p)
         logging.info("Using analytic KL between q:%s, p:%s", q, p)
       except NotImplementedError as e:
         if form == ELBOForms.analytic_kl:
@@ -316,8 +319,10 @@ def _find_variational_and_priors(model,
   if not all(
       [isinstance(q, st.StochasticTensor) for q in variational_with_prior]):
     raise TypeError("variationals must be StochasticTensors")
-  if not all([p is None or isinstance(p, distributions.Distribution)
-              for p in variational_with_prior.values()]):
-    raise TypeError("priors must be Distributions")
+  if not all([
+      p is None or isinstance(p, distribution.Distribution)
+      for p in variational_with_prior.values()
+  ]):
+    raise TypeError("priors must be Distribution objects")
 
   return variational_with_prior

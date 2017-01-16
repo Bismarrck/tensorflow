@@ -60,20 +60,20 @@ def exponential_decay(learning_rate, global_step, decay_steps, decay_rate,
   ```
 
   Args:
-    learning_rate: A scalar `float32` or `float64` `Output` or a
+    learning_rate: A scalar `float32` or `float64` `Tensor` or a
       Python number.  The initial learning rate.
-    global_step: A scalar `int32` or `int64` `Output` or a Python number.
+    global_step: A scalar `int32` or `int64` `Tensor` or a Python number.
       Global step to use for the decay computation.  Must not be negative.
-    decay_steps: A scalar `int32` or `int64` `Output` or a Python number.
+    decay_steps: A scalar `int32` or `int64` `Tensor` or a Python number.
       Must be positive.  See the decay computation above.
-    decay_rate: A scalar `float32` or `float64` `Output` or a
+    decay_rate: A scalar `float32` or `float64` `Tensor` or a
       Python number.  The decay rate.
     staircase: Boolean.  If `True` decay the learning rate at discrete intervals
     name: String.  Optional name of the operation.  Defaults to
       'ExponentialDecay'.
 
   Returns:
-    A scalar `Output` of the same type as `learning_rate`.  The decayed
+    A scalar `Tensor` of the same type as `learning_rate`.  The decayed
     learning rate.
 
   Raises:
@@ -92,7 +92,8 @@ def exponential_decay(learning_rate, global_step, decay_steps, decay_rate,
     p = global_step / decay_steps
     if staircase:
       p = math_ops.floor(p)
-    return math_ops.mul(learning_rate, math_ops.pow(decay_rate, p), name=name)
+    return math_ops.multiply(learning_rate, math_ops.pow(decay_rate, p),
+                             name=name)
 
 
 def piecewise_constant(x, boundaries, values, name=None):
@@ -111,11 +112,11 @@ def piecewise_constant(x, boundaries, values, name=None):
   ```
 
   Args:
-    x: A 0-D scalar `Output`. Must be one of the following types: `float32`,
+    x: A 0-D scalar `Tensor`. Must be one of the following types: `float32`,
       `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`.
-    boundaries: A list of `Output`s or `int`s or `float`s with strictly
+    boundaries: A list of `Tensor`s or `int`s or `float`s with strictly
       increasing entries, and with all elements having the same type as `x`.
-    values: A list of `Output`s or float`s or `int`s that specifies the values
+    values: A list of `Tensor`s or float`s or `int`s that specifies the values
       for the intervals defined by `boundaries`. It should have one more element
       than `boundaries`, and all elements should have the same type.
     name: A string. Optional name of the operation. Defaults to
@@ -216,22 +217,22 @@ def polynomial_decay(learning_rate, global_step, decay_steps,
   ```
 
   Args:
-    learning_rate: A scalar `float32` or `float64` `Output` or a
+    learning_rate: A scalar `float32` or `float64` `Tensor` or a
       Python number.  The initial learning rate.
-    global_step: A scalar `int32` or `int64` `Output` or a Python number.
+    global_step: A scalar `int32` or `int64` `Tensor` or a Python number.
       Global step to use for the decay computation.  Must not be negative.
-    decay_steps: A scalar `int32` or `int64` `Output` or a Python number.
+    decay_steps: A scalar `int32` or `int64` `Tensor` or a Python number.
       Must be positive.  See the decay computation above.
-    end_learning_rate: A scalar `float32` or `float64` `Output` or a
+    end_learning_rate: A scalar `float32` or `float64` `Tensor` or a
       Python number.  The minimal end learning rate.
-    power: A scalar `float32` or `float64` `Output` or a
+    power: A scalar `float32` or `float64` `Tensor` or a
       Python number.  The power of the polynomial. Defaults to sqrt, i.e. 0.5.
     cycle: A boolean, whether or not it should cycle beyond decay_steps.
     name: String.  Optional name of the operation. Defaults to
       'PolynomialDecay'.
 
   Returns:
-    A scalar `Output` of the same type as `learning_rate`.  The decayed
+    A scalar `Tensor` of the same type as `learning_rate`.  The decayed
     learning rate.
 
   Raises:
@@ -250,15 +251,15 @@ def polynomial_decay(learning_rate, global_step, decay_steps,
     power = math_ops.cast(power, dtype)
     if cycle:
       # Find the first multiple of decay_steps that is bigger than global_step.
-      decay_steps = math_ops.mul(decay_steps,
-                                 math_ops.ceil(global_step / decay_steps))
+      decay_steps = math_ops.multiply(decay_steps,
+                                      math_ops.ceil(global_step / decay_steps))
     else:
       # Make sure that the global_step used is not bigger than decay_steps.
       global_step = math_ops.minimum(global_step, decay_steps)
 
     p = math_ops.div(global_step, decay_steps)
-    return math_ops.add(math_ops.mul(learning_rate - end_learning_rate,
-                                     math_ops.pow(1 - p, power)),
+    return math_ops.add(math_ops.multiply(learning_rate - end_learning_rate,
+                                          math_ops.pow(1 - p, power)),
                         end_learning_rate, name=name)
 
 
@@ -295,7 +296,7 @@ def natural_exp_decay(learning_rate, global_step, decay_steps, decay_rate,
   ```
 
   Args:
-    learning_rate: A scalar `float32` or `float64` `Output` or a
+    learning_rate: A scalar `float32` or `float64` `Tensor` or a
       Python number.  The initial learning rate.
     global_step: A Python number.
       Global step to use for the decay computation.  Must not be negative.
@@ -307,7 +308,7 @@ def natural_exp_decay(learning_rate, global_step, decay_steps, decay_rate,
       'ExponentialTimeDecay'.
 
   Returns:
-    A scalar `Output` of the same type as `learning_rate`.  The decayed
+    A scalar `Tensor` of the same type as `learning_rate`.  The decayed
     learning rate.
 
   Raises:
@@ -325,8 +326,8 @@ def natural_exp_decay(learning_rate, global_step, decay_steps, decay_rate,
     p = global_step / decay_steps
     if staircase:
       p = math_ops.floor(p)
-    exponent = math_ops.exp(math_ops.mul(math_ops.neg(decay_rate), p))
-    return math_ops.mul(learning_rate, exponent, name=name)
+    exponent = math_ops.exp(math_ops.multiply(math_ops.negative(decay_rate), p))
+    return math_ops.multiply(learning_rate, exponent, name=name)
 
 
 def inverse_time_decay(learning_rate, global_step, decay_steps, decay_rate,
@@ -362,7 +363,7 @@ def inverse_time_decay(learning_rate, global_step, decay_steps, decay_rate,
   ```
 
   Args:
-    learning_rate: A scalar `float32` or `float64` `Output` or a
+    learning_rate: A scalar `float32` or `float64` `Tensor` or a
       Python number.  The initial learning rate.
     global_step: A Python number.
       Global step to use for the decay computation.  Must not be negative.
@@ -374,7 +375,7 @@ def inverse_time_decay(learning_rate, global_step, decay_steps, decay_rate,
       'InverseTimeDecay'.
 
   Returns:
-    A scalar `Output` of the same type as `learning_rate`.  The decayed
+    A scalar `Tensor` of the same type as `learning_rate`.  The decayed
     learning rate.
 
   Raises:
@@ -393,5 +394,5 @@ def inverse_time_decay(learning_rate, global_step, decay_steps, decay_rate,
     if staircase:
       p = math_ops.floor(p)
     const = math_ops.cast(constant_op.constant(1), learning_rate.dtype)
-    denom = math_ops.add(const, math_ops.mul(decay_rate, p))
+    denom = math_ops.add(const, math_ops.multiply(decay_rate, p))
     return math_ops.div(learning_rate, denom, name=name)

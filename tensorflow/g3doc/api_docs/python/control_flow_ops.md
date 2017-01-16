@@ -2,7 +2,7 @@
 
 # Control Flow
 
-Note: Functions taking `Output` arguments can also take anything accepted by
+Note: Functions taking `Tensor` arguments can also take anything accepted by
 [`tf.convert_to_tensor`](framework.md#convert_to_tensor).
 
 [TOC]
@@ -21,12 +21,12 @@ Return a tensor with the same shape and contents as the input tensor or value.
 ##### Args:
 
 
-*  <b>`input`</b>: A `Output`.
+*  <b>`input`</b>: A `Tensor`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  A `Output`. Has the same type as `input`.
+  A `Tensor`. Has the same type as `input`.
 
 
 - - -
@@ -52,7 +52,7 @@ See also `group` and `with_dependencies`.
 ##### Args:
 
 
-*  <b>`tensors`</b>: A list of `Output`s or `IndexedSlices`, some entries can be `None`.
+*  <b>`tensors`</b>: A list of `Tensor`s or `IndexedSlices`, some entries can be `None`.
 *  <b>`name`</b>: (optional) A name to use as a `name_scope` for the operation.
 *  <b>`control_inputs`</b>: List of additional ops to finish before returning.
 
@@ -63,8 +63,8 @@ See also `group` and `with_dependencies`.
 ##### Raises:
 
 
-*  <b>`ValueError`</b>: If `tensors` does not contain any `Output` or `IndexedSlices`.
-*  <b>`TypeError`</b>: If `control_inputs` is not a list of `Operation` or `Output`
+*  <b>`ValueError`</b>: If `tensors` does not contain any `Tensor` or `IndexedSlices`.
+*  <b>`TypeError`</b>: If `control_inputs` is not a list of `Operation` or `Tensor`
     objects.
 
 
@@ -121,7 +121,7 @@ Increments 'ref' until it reaches 'limit'.
 ##### Args:
 
 
-*  <b>`ref`</b>: A mutable `Output`. Must be one of the following types: `int32`, `int64`.
+*  <b>`ref`</b>: A mutable `Tensor`. Must be one of the following types: `int32`, `int64`.
     Should be from a scalar `Variable` node.
 *  <b>`limit`</b>: An `int`.
     If incrementing ref would bring it above limit, instead generates an
@@ -130,7 +130,7 @@ Increments 'ref' until it reaches 'limit'.
 
 ##### Returns:
 
-  A `Output`. Has the same type as `ref`.
+  A `Tensor`. Has the same type as `ref`.
   A copy of the input before increment. If nothing else modifies the
   input, the values produced will all be distinct.
 
@@ -148,7 +148,7 @@ Note that the conditional execution applies only to the operations defined in
 fn1 and fn2. Consider the following simple program:
 
 ```python
-z = tf.mul(a, b)
+z = tf.multiply(a, b)
 result = tf.cond(x < y, lambda: tf.add(x, z), lambda: tf.square(y))
 ```
 
@@ -184,9 +184,9 @@ it has occasionally surprised some users who expected a lazier semantics.
 ```python
   x = tf.constant(2)
   y = tf.constant(5)
-  def f1(): return tf.mul(x, 17)
+  def f1(): return tf.multiply(x, 17)
   def f2(): return tf.add(y, 23)
-  r = cond(tf.less(x, y), f1, f2)
+  r = tf.cond(tf.less(x, y), f1, f2)
   # r is set to f1().
   # Operations in f2 (e.g., tf.add) are not executed.
 ```
@@ -300,7 +300,7 @@ not specified), it is assumed that the initial shape of each tensor in
 `loop_vars` is the same in every iteration. The `shape_invariants` argument
 allows the caller to specify a less specific shape invariant for each loop
 variable, which is needed if the shape varies between iterations. The
-[`Output.set_shape()`](../../api_docs/python/framework.md#Output.set_shape)
+[`Tensor.set_shape()`](../../api_docs/python/framework.md#Tensor.set_shape)
 function may also be used in the `body` function to indicate that
 the output loop variable has a particular shape. The shape invariant for
 SparseTensor and IndexedSlices are treated specially as follows:
@@ -309,7 +309,7 @@ a) If a loop variable is a SparseTensor, the shape invariant must be
 TensorShape([r]) where r is the rank of the dense tensor represented
 by the sparse tensor. It means the shapes of the three tensors of the
 SparseTensor are ([None], [None, r], [r]). NOTE: The shape invariant here
-is the shape of the SparseTensor.shape property. It must be the shape of
+is the shape of the SparseTensor.dense_shape property. It must be the shape of
 a vector.
 
 b) If a loop variable is an IndexedSlices, the shape invariant must be
@@ -336,7 +336,7 @@ sequences and large batches.
 *  <b>`cond`</b>: A callable that represents the termination condition of the loop.
 *  <b>`body`</b>: A callable that represents the loop body.
 *  <b>`loop_vars`</b>: A (possibly nested) tuple, namedtuple or list of numpy array,
-    `Output`, and `TensorArray` objects.
+    `Tensor`, and `TensorArray` objects.
 *  <b>`shape_invariants`</b>: The shape invariants for the loop variables.
 *  <b>`parallel_iterations`</b>: The number of iterations allowed to run in parallel.
     It must be a positive integer.
@@ -383,10 +383,10 @@ Example using shape_invariants:
   i0 = tf.constant(0)
   m0 = tf.ones([2, 2])
   c = lambda i, m: i < 10
-  b = lambda i, m: [i+1, tf.concat(0, [m, m])]
+  b = lambda i, m: [i+1, tf.concat([m, m], axis=0)]
   tf.while_loop(
       c, b, loop_vars=[i0, m0],
-      shape_invariants=[i0.get_shape(), tensor_shape.TensorShape([None, 2])])
+      shape_invariants=[i0.get_shape(), tf.TensorShape([None, 2])])
   ```
 
 
@@ -408,13 +408,13 @@ Returns the truth value of x AND y element-wise.
 ##### Args:
 
 
-*  <b>`x`</b>: An `Output` of type `bool`.
-*  <b>`y`</b>: An `Output` of type `bool`.
+*  <b>`x`</b>: A `Tensor` of type `bool`.
+*  <b>`y`</b>: A `Tensor` of type `bool`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output` of type `bool`.
+  A `Tensor` of type `bool`.
 
 
 - - -
@@ -426,12 +426,12 @@ Returns the truth value of NOT x element-wise.
 ##### Args:
 
 
-*  <b>`x`</b>: An `Output` of type `bool`.
+*  <b>`x`</b>: A `Tensor` of type `bool`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output` of type `bool`.
+  A `Tensor` of type `bool`.
 
 
 - - -
@@ -446,13 +446,13 @@ Returns the truth value of x OR y element-wise.
 ##### Args:
 
 
-*  <b>`x`</b>: An `Output` of type `bool`.
-*  <b>`y`</b>: An `Output` of type `bool`.
+*  <b>`x`</b>: A `Tensor` of type `bool`.
+*  <b>`y`</b>: A `Tensor` of type `bool`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output` of type `bool`.
+  A `Tensor` of type `bool`.
 
 
 - - -
@@ -480,13 +480,13 @@ Returns the truth value of (x == y) element-wise.
 ##### Args:
 
 
-*  <b>`x`</b>: A `Output`. Must be one of the following types: `half`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `complex64`, `quint8`, `qint8`, `qint32`, `string`, `bool`, `complex128`.
-*  <b>`y`</b>: A `Output`. Must have the same type as `x`.
+*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `half`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `complex64`, `quint8`, `qint8`, `qint32`, `string`, `bool`, `complex128`.
+*  <b>`y`</b>: A `Tensor`. Must have the same type as `x`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output` of type `bool`.
+  A `Tensor` of type `bool`.
 
 
 - - -
@@ -501,13 +501,13 @@ Returns the truth value of (x != y) element-wise.
 ##### Args:
 
 
-*  <b>`x`</b>: A `Output`. Must be one of the following types: `half`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `complex64`, `quint8`, `qint8`, `qint32`, `string`, `bool`, `complex128`.
-*  <b>`y`</b>: A `Output`. Must have the same type as `x`.
+*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `half`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `complex64`, `quint8`, `qint8`, `qint32`, `string`, `bool`, `complex128`.
+*  <b>`y`</b>: A `Tensor`. Must have the same type as `x`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output` of type `bool`.
+  A `Tensor` of type `bool`.
 
 
 - - -
@@ -522,13 +522,13 @@ Returns the truth value of (x < y) element-wise.
 ##### Args:
 
 
-*  <b>`x`</b>: A `Output`. Must be one of the following types: `float32`, `float64`, `int32`, `int64`, `uint8`, `int16`, `int8`, `uint16`, `half`.
-*  <b>`y`</b>: A `Output`. Must have the same type as `x`.
+*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `float32`, `float64`, `int32`, `int64`, `uint8`, `int16`, `int8`, `uint16`, `half`.
+*  <b>`y`</b>: A `Tensor`. Must have the same type as `x`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output` of type `bool`.
+  A `Tensor` of type `bool`.
 
 
 - - -
@@ -543,13 +543,13 @@ Returns the truth value of (x <= y) element-wise.
 ##### Args:
 
 
-*  <b>`x`</b>: A `Output`. Must be one of the following types: `float32`, `float64`, `int32`, `int64`, `uint8`, `int16`, `int8`, `uint16`, `half`.
-*  <b>`y`</b>: A `Output`. Must have the same type as `x`.
+*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `float32`, `float64`, `int32`, `int64`, `uint8`, `int16`, `int8`, `uint16`, `half`.
+*  <b>`y`</b>: A `Tensor`. Must have the same type as `x`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output` of type `bool`.
+  A `Tensor` of type `bool`.
 
 
 - - -
@@ -564,13 +564,13 @@ Returns the truth value of (x > y) element-wise.
 ##### Args:
 
 
-*  <b>`x`</b>: A `Output`. Must be one of the following types: `float32`, `float64`, `int32`, `int64`, `uint8`, `int16`, `int8`, `uint16`, `half`.
-*  <b>`y`</b>: A `Output`. Must have the same type as `x`.
+*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `float32`, `float64`, `int32`, `int64`, `uint8`, `int16`, `int8`, `uint16`, `half`.
+*  <b>`y`</b>: A `Tensor`. Must have the same type as `x`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output` of type `bool`.
+  A `Tensor` of type `bool`.
 
 
 - - -
@@ -585,74 +585,13 @@ Returns the truth value of (x >= y) element-wise.
 ##### Args:
 
 
-*  <b>`x`</b>: A `Output`. Must be one of the following types: `float32`, `float64`, `int32`, `int64`, `uint8`, `int16`, `int8`, `uint16`, `half`.
-*  <b>`y`</b>: A `Output`. Must have the same type as `x`.
+*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `float32`, `float64`, `int32`, `int64`, `uint8`, `int16`, `int8`, `uint16`, `half`.
+*  <b>`y`</b>: A `Tensor`. Must have the same type as `x`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output` of type `bool`.
-
-
-- - -
-
-### `tf.select(condition, t, e, name=None)` {#select}
-
-Selects elements from `t` or `e`, depending on `condition`.
-
-The `t`, and `e` tensors must all have the same shape, and the
-output will also have that shape.
-
-The `condition` tensor must be a scalar if `t` and `e` are scalars.
-If `t` and `e` are vectors or higher rank, then `condition` must be either a
-scalar, a vector with size matching the first dimension of `t`, or must have
-the same shape as `t`.
-
-The `condition` tensor acts as a mask that chooses, based on the value at each
-element, whether the corresponding element / row in the output should be
-taken from `t` (if true) or `e` (if false).
-
-If `condition` is a vector and `t` and `e` are higher rank matrices, then
-it chooses which row (outer dimension) to copy from `t` and `e`.
-If `condition` has the same shape as `t` and `e`, then it chooses which
-element to copy from `t` and `e`.
-
-For example:
-
-```prettyprint
-# 'condition' tensor is [[True,  False]
-#                        [False, True]]
-# 't' is [[1, 2],
-#         [3, 4]]
-# 'e' is [[5, 6],
-#         [7, 8]]
-select(condition, t, e) ==> [[1, 6],
-                             [7, 4]]
-
-
-# 'condition' tensor is [True, False]
-# 't' is [[1, 2],
-#         [3, 4]]
-# 'e' is [[5, 6],
-#         [7, 8]]
-select(condition, t, e) ==> [[1, 2],
-                             [7, 8]]
-
-```
-
-##### Args:
-
-
-*  <b>`condition`</b>: An `Output` of type `bool`.
-*  <b>`t`</b>: An `Output` which may have the same shape as `condition`.
-    If `condition` is rank 1, `t` may have higher rank,
-    but its first dimension must match the size of `condition`.
-*  <b>`e`</b>: An `Output` with the same type and shape as `t`.
-*  <b>`name`</b>: A name for the operation (optional).
-
-##### Returns:
-
-  An `Output` with the same type and shape as `t` and `e`.
+  A `Tensor` of type `bool`.
 
 
 - - -
@@ -687,7 +626,7 @@ has the same shape as `x` and `y`, then it chooses which element to copy from
 ##### Args:
 
 
-*  <b>`condition`</b>: An `Output` of type `bool`
+*  <b>`condition`</b>: A `Tensor` of type `bool`
 *  <b>`x`</b>: A Tensor which may have the same shape as `condition`. If `condition` is
     rank 1, `x` may have higher rank, but its first dimension must match the
     size of `condition`.
@@ -696,8 +635,8 @@ has the same shape as `x` and `y`, then it chooses which element to copy from
 
 ##### Returns:
 
-  An `Output` with the same type and shape as `x`, `y` if they are non-None.
-  An `Output` with shape `(num_true, dim_size(condition))`.
+  A `Tensor` with the same type and shape as `x`, `y` if they are non-None.
+  A `Tensor` with shape `(num_true, dim_size(condition))`.
 
 ##### Raises:
 
@@ -724,12 +663,12 @@ Equivalent to np.isfinite
 ##### Args:
 
 
-*  <b>`x`</b>: A `Output`. Must be one of the following types: `half`, `float32`, `float64`.
+*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `half`, `float32`, `float64`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output` of type `bool`.
+  A `Tensor` of type `bool`.
 
 
 - - -
@@ -745,12 +684,12 @@ Equivalent to np.isinf
 ##### Args:
 
 
-*  <b>`x`</b>: A `Output`. Must be one of the following types: `half`, `float32`, `float64`.
+*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `half`, `float32`, `float64`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output` of type `bool`.
+  A `Tensor` of type `bool`.
 
 
 - - -
@@ -766,12 +705,12 @@ Equivalent to np.isnan
 ##### Args:
 
 
-*  <b>`x`</b>: A `Output`. Must be one of the following types: `half`, `float32`, `float64`.
+*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `half`, `float32`, `float64`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output` of type `bool`.
+  A `Tensor` of type `bool`.
 
 
 - - -
@@ -804,13 +743,13 @@ that are not a number (NaN) or infinity (Inf). Otherwise, passes `tensor` as-is.
 ##### Args:
 
 
-*  <b>`tensor`</b>: A `Output`. Must be one of the following types: `half`, `float32`, `float64`.
+*  <b>`tensor`</b>: A `Tensor`. Must be one of the following types: `half`, `float32`, `float64`.
 *  <b>`message`</b>: A `string`. Prefix of the error message.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  A `Output`. Has the same type as `tensor`.
+  A `Tensor`. Has the same type as `tensor`.
 
 
 - - -
@@ -841,9 +780,10 @@ If `condition` evaluates to false, print the list of tensors in `data`.
 NOTE: To ensure that Assert executes, one usually attaches a dependency:
 
 ```python
- # Ensure maximum element of x is smaller or equal to 1
+# Ensure maximum element of x is smaller or equal to 1
 assert_op = tf.Assert(tf.less_equal(tf.reduce_max(x), 1.), [x])
-x = tf.with_dependencies([assert_op], x)
+with tf.control_dependencies([assert_op]):
+  ... code using x ...
 ```
 
 ##### Args:

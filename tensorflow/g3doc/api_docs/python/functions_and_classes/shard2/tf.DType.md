@@ -1,4 +1,4 @@
-Represents the type of the elements in an `Output`.
+Represents the type of the elements in a `Tensor`.
 
 The following `DType` objects are defined:
 
@@ -74,6 +74,13 @@ Returns a non-reference `DType` based on this `DType`.
 #### `tf.DType.real_dtype` {#DType.real_dtype}
 
 Returns the dtype correspond to this dtype's real part.
+
+
+- - -
+
+#### `tf.DType.is_bool` {#DType.is_bool}
+
+Returns whether this is a boolean data type
 
 
 - - -

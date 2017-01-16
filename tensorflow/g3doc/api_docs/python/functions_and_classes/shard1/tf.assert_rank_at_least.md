@@ -9,17 +9,11 @@ with tf.control_dependencies([tf.assert_rank_at_least(x, 2)]):
   output = tf.reduce_sum(x)
 ```
 
-Example of adding dependency to the tensor being checked:
-
-```python
-x = tf.with_dependencies([tf.assert_rank_at_least(x, 2)], x)
-```
-
 ##### Args:
 
 
-*  <b>`x`</b>: Numeric `Output`.
-*  <b>`rank`</b>: Scalar `Output`.
+*  <b>`x`</b>: Numeric `Tensor`.
+*  <b>`rank`</b>: Scalar `Tensor`.
 *  <b>`data`</b>: The tensors to print out if the condition is False.  Defaults to
     error message and first few entries of `x`.
 *  <b>`summarize`</b>: Print this many entries of each tensor.

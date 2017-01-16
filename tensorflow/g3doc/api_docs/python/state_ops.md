@@ -2,7 +2,7 @@
 
 # Variables
 
-Note: Functions taking `Output` arguments can also take anything accepted by
+Note: Functions taking `Tensor` arguments can also take anything accepted by
 [`tf.convert_to_tensor`](framework.md#convert_to_tensor).
 
 [TOC]
@@ -20,7 +20,7 @@ A variable maintains state in the graph across calls to `run()`. You add a
 variable to the graph by constructing an instance of the class `Variable`.
 
 The `Variable()` constructor requires an initial value for the variable,
-which can be an `Output` of any type and shape. The initial value defines the
+which can be a `Tensor` of any type and shape. The initial value defines the
 type and shape of the variable. After construction, the type and shape of
 the variable are fixed. The value can be changed using one of the assign
 methods.
@@ -28,9 +28,9 @@ methods.
 If you want to change the shape of a variable later you have to use an
 `assign` Op with `validate_shape=False`.
 
-Just like any `Output`, variables created with `Variable()` can be used as
+Just like any `Tensor`, variables created with `Variable()` can be used as
 inputs for other Ops in the graph. Additionally, all the operators
-overloaded for the `Output` class are carried over to variables, so you can
+overloaded for the `Tensor` class are carried over to variables, so you can
 also add nodes to the graph by just doing arithmetic on variables.
 
 ```python
@@ -66,12 +66,12 @@ with tf.Session() as sess:
 ```
 
 The most common initialization pattern is to use the convenience function
-`global_variable_initializers()` to add an Op to the graph that initializes
+`global_variables_initializer()` to add an Op to the graph that initializes
 all the variables. You then run that Op after launching the graph.
 
 ```python
 # Add an Op to initialize global variables.
-init_op = tf.global_variable_initializers()
+init_op = tf.global_variables_initializer()
 
 # Launch the graph in a session.
 with tf.Session() as sess:
@@ -120,7 +120,7 @@ variable to its initial value.
 ##### Args:
 
 
-*  <b>`initial_value`</b>: An `Output`, or Python object convertible to an `Output`,
+*  <b>`initial_value`</b>: A `Tensor`, or Python object convertible to a `Tensor`,
     which is the initial value for the Variable. The initial value must have
     a shape specified unless `validate_shape` is set to False. Can also be a
     callable with no argument that returns the initial value when called. In
@@ -169,6 +169,10 @@ Returns the value of the initialized variable.
 You should use this instead of the variable itself to initialize another
 variable with a value that depends on the value of this variable.
 
+Beware of using initialized_value except during initialization:
+initialized_value causes the Variable's initializer op to be run, so running
+this op resets the variable to the initial value.
+
 ```python
 # Initialize 'v' with a random tensor.
 v = tf.Variable(tf.truncated_normal([10, 40]))
@@ -180,7 +184,7 @@ w = tf.Variable(v.initialized_value() * 2.0)
 
 ##### Returns:
 
-  An `Output` holding the value of this variable after its initializer
+  A `Tensor` holding the value of this variable after its initializer
   has run.
 
 
@@ -198,12 +202,12 @@ This is essentially a shortcut for `assign(self, value)`.
 ##### Args:
 
 
-*  <b>`value`</b>: An `Output`. The new value for this variable.
+*  <b>`value`</b>: A `Tensor`. The new value for this variable.
 *  <b>`use_locking`</b>: If `True`, use locking during the assignment.
 
 ##### Returns:
 
-  An `Output` that will hold the new value of this variable after
+  A `Tensor` that will hold the new value of this variable after
   the assignment has completed.
 
 
@@ -218,12 +222,12 @@ Adds a value to this variable.
 ##### Args:
 
 
-*  <b>`delta`</b>: An `Output`. The value to add to this variable.
+*  <b>`delta`</b>: A `Tensor`. The value to add to this variable.
 *  <b>`use_locking`</b>: If `True`, use locking during the operation.
 
 ##### Returns:
 
-  An `Output` that will hold the new value of this variable after
+  A `Tensor` that will hold the new value of this variable after
   the addition has completed.
 
 
@@ -238,12 +242,12 @@ This is essentially a shortcut for `assign_sub(self, delta)`.
 ##### Args:
 
 
-*  <b>`delta`</b>: An `Output`. The value to subtract from this variable.
+*  <b>`delta`</b>: A `Tensor`. The value to subtract from this variable.
 *  <b>`use_locking`</b>: If `True`, use locking during the operation.
 
 ##### Returns:
 
-  An `Output` that will hold the new value of this variable after
+  A `Tensor` that will hold the new value of this variable after
   the subtraction has completed.
 
 
@@ -264,7 +268,7 @@ sparse_delta.values)`.
 
 ##### Returns:
 
-  An `Output` that will hold the new value of this variable after
+  A `Tensor` that will hold the new value of this variable after
   the scattered subtraction has completed.
 
 ##### Raises:
@@ -295,7 +299,7 @@ This is essentially a shortcut for `count_up_to(self, limit)`.
 
 ##### Returns:
 
-  An `Output` that will hold the variable value before the increment. If no
+  A `Tensor` that will hold the variable value before the increment. If no
   other Op modifies this variable, the values produced will all be
   distinct.
 
@@ -316,7 +320,7 @@ more information on launching a graph and on sessions.
 
 ```python
 v = tf.Variable([1, 2])
-init = tf.global_variable_initializers()
+init = tf.global_variables_initializer()
 
 with tf.Session() as sess:
     sess.run(init)
@@ -407,20 +411,16 @@ containing the absolute value of each element in `x`. For example, if x is
 an input element and y is an output element, this operation computes
 \\(y = |x|\\).
 
-See [`tf.complex_abs()`](#tf_complex_abs) to compute the absolute value of a
-complex
-number.
-
 ##### Args:
 
 
-*  <b>`x`</b>: An `Output` or `SparseTensor` of type `float32`, `float64`, `int32`, or
+*  <b>`x`</b>: A `Tensor` or `SparseTensor` of type `float32`, `float64`, `int32`, or
     `int64`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output` or `SparseTensor` the same size and type as `x` with absolute
+  A `Tensor` or `SparseTensor` the same size and type as `x` with absolute
     values.
 
 
@@ -436,13 +436,13 @@ Returns x + y element-wise.
 ##### Args:
 
 
-*  <b>`x`</b>: A `Output`. Must be one of the following types: `half`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `complex64`, `complex128`, `string`.
-*  <b>`y`</b>: A `Output`. Must have the same type as `x`.
+*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `half`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `complex64`, `complex128`, `string`.
+*  <b>`y`</b>: A `Tensor`. Must have the same type as `x`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  A `Output`. Has the same type as `x`.
+  A `Tensor`. Has the same type as `x`.
 
 
 - - -
@@ -457,34 +457,31 @@ Returns the truth value of x AND y element-wise.
 ##### Args:
 
 
-*  <b>`x`</b>: An `Output` of type `bool`.
-*  <b>`y`</b>: An `Output` of type `bool`.
+*  <b>`x`</b>: A `Tensor` of type `bool`.
+*  <b>`y`</b>: A `Tensor` of type `bool`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output` of type `bool`.
+  A `Tensor` of type `bool`.
 
 
 - - -
 
 #### `tf.Variable.__div__(a, *args)` {#Variable.__div__}
 
-Returns x / y element-wise.
-
-*NOTE*: `Div` supports broadcasting. More about broadcasting
-[here](http://docs.scipy.org/doc/numpy/user/basics.broadcasting.html)
+Divide two values using Python 2 semantics. Used for Tensor.__div__.
 
 ##### Args:
 
 
-*  <b>`x`</b>: A `Output`. Must be one of the following types: `half`, `float32`, `float64`, `uint8`, `int8`, `uint16`, `int16`, `int32`, `int64`, `complex64`, `complex128`.
-*  <b>`y`</b>: A `Output`. Must have the same type as `x`.
+*  <b>`x`</b>: `Tensor` numerator of real numeric type.
+*  <b>`y`</b>: `Tensor` denominator of real numeric type.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  A `Output`. Has the same type as `x`.
+  `x / y` returns the quotient of x and y.
 
 
 - - -
@@ -508,8 +505,8 @@ as well.
 ##### Args:
 
 
-*  <b>`x`</b>: `Output` numerator of real numeric type.
-*  <b>`y`</b>: `Output` denominator of real numeric type.
+*  <b>`x`</b>: `Tensor` numerator of real numeric type.
+*  <b>`y`</b>: `Tensor` denominator of real numeric type.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
@@ -534,13 +531,13 @@ Returns the truth value of (x >= y) element-wise.
 ##### Args:
 
 
-*  <b>`x`</b>: A `Output`. Must be one of the following types: `float32`, `float64`, `int32`, `int64`, `uint8`, `int16`, `int8`, `uint16`, `half`.
-*  <b>`y`</b>: A `Output`. Must have the same type as `x`.
+*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `float32`, `float64`, `int32`, `int64`, `uint8`, `int16`, `int8`, `uint16`, `half`.
+*  <b>`y`</b>: A `Tensor`. Must have the same type as `x`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output` of type `bool`.
+  A `Tensor` of type `bool`.
 
 
 - - -
@@ -552,7 +549,7 @@ Creates a slice helper object given a variable.
 This allows creating a sub-tensor from part of the current contents
 of a variable.
 See
-[`Output.__getitem__`](../../api_docs/python/framework.md#Output.__getitem__)
+[`Tensor.__getitem__`](../../api_docs/python/framework.md#Tensor.__getitem__)
 for detailed examples of slicing.
 
 This function in addition also allows assignment to a sliced range.
@@ -579,7 +576,7 @@ semantics.
 
 
 *  <b>`var`</b>: An `ops.Variable` object.
-*  <b>`slice_spec`</b>: The arguments to `Output.__getitem__`.
+*  <b>`slice_spec`</b>: The arguments to `Tensor.__getitem__`.
 
 ##### Returns:
 
@@ -606,13 +603,13 @@ Returns the truth value of (x > y) element-wise.
 ##### Args:
 
 
-*  <b>`x`</b>: A `Output`. Must be one of the following types: `float32`, `float64`, `int32`, `int64`, `uint8`, `int16`, `int8`, `uint16`, `half`.
-*  <b>`y`</b>: A `Output`. Must have the same type as `x`.
+*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `float32`, `float64`, `int32`, `int64`, `uint8`, `int16`, `int8`, `uint16`, `half`.
+*  <b>`y`</b>: A `Tensor`. Must have the same type as `x`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output` of type `bool`.
+  A `Tensor` of type `bool`.
 
 
 - - -
@@ -624,12 +621,12 @@ Returns the truth value of NOT x element-wise.
 ##### Args:
 
 
-*  <b>`x`</b>: An `Output` of type `bool`.
+*  <b>`x`</b>: A `Tensor` of type `bool`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output` of type `bool`.
+  A `Tensor` of type `bool`.
 
 
 - - -
@@ -660,13 +657,13 @@ Returns the truth value of (x <= y) element-wise.
 ##### Args:
 
 
-*  <b>`x`</b>: A `Output`. Must be one of the following types: `float32`, `float64`, `int32`, `int64`, `uint8`, `int16`, `int8`, `uint16`, `half`.
-*  <b>`y`</b>: A `Output`. Must have the same type as `x`.
+*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `float32`, `float64`, `int32`, `int64`, `uint8`, `int16`, `int8`, `uint16`, `half`.
+*  <b>`y`</b>: A `Tensor`. Must have the same type as `x`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output` of type `bool`.
+  A `Tensor` of type `bool`.
 
 
 - - -
@@ -681,34 +678,37 @@ Returns the truth value of (x < y) element-wise.
 ##### Args:
 
 
-*  <b>`x`</b>: A `Output`. Must be one of the following types: `float32`, `float64`, `int32`, `int64`, `uint8`, `int16`, `int8`, `uint16`, `half`.
-*  <b>`y`</b>: A `Output`. Must have the same type as `x`.
+*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `float32`, `float64`, `int32`, `int64`, `uint8`, `int16`, `int8`, `uint16`, `half`.
+*  <b>`y`</b>: A `Tensor`. Must have the same type as `x`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output` of type `bool`.
+  A `Tensor` of type `bool`.
 
 
 - - -
 
 #### `tf.Variable.__mod__(a, *args)` {#Variable.__mod__}
 
-Returns element-wise remainder of division.
+Returns element-wise remainder of division. When `x < 0` xor `y < 0` is
 
-*NOTE*: `Mod` supports broadcasting. More about broadcasting
+true, this follows Python semantics in that the result here is consistent
+with a flooring divide. E.g. `floor(x / y) * y + mod(x, y) = x`.
+
+*NOTE*: `FloorMod` supports broadcasting. More about broadcasting
 [here](http://docs.scipy.org/doc/numpy/user/basics.broadcasting.html)
 
 ##### Args:
 
 
-*  <b>`x`</b>: A `Output`. Must be one of the following types: `int32`, `int64`, `float32`, `float64`.
-*  <b>`y`</b>: A `Output`. Must have the same type as `x`.
+*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `int32`, `int64`, `float32`, `float64`.
+*  <b>`y`</b>: A `Tensor`. Must have the same type as `x`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  A `Output`. Has the same type as `x`.
+  A `Tensor`. Has the same type as `x`.
 
 
 - - -
@@ -729,12 +729,12 @@ I.e., \\(y = -x\\).
 ##### Args:
 
 
-*  <b>`x`</b>: A `Output`. Must be one of the following types: `half`, `float32`, `float64`, `int32`, `int64`, `complex64`, `complex128`.
+*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `half`, `float32`, `float64`, `int32`, `int64`, `complex64`, `complex128`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  A `Output`. Has the same type as `x`.
+  A `Tensor`. Has the same type as `x`.
 
 
 - - -
@@ -749,13 +749,13 @@ Returns the truth value of x OR y element-wise.
 ##### Args:
 
 
-*  <b>`x`</b>: An `Output` of type `bool`.
-*  <b>`y`</b>: An `Output` of type `bool`.
+*  <b>`x`</b>: A `Tensor` of type `bool`.
+*  <b>`y`</b>: A `Tensor` of type `bool`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output` of type `bool`.
+  A `Tensor` of type `bool`.
 
 
 - - -
@@ -776,15 +776,15 @@ tf.pow(x, y) ==> [[256, 65536], [9, 27]]
 ##### Args:
 
 
-*  <b>`x`</b>: An `Output` of type `float32`, `float64`, `int32`, `int64`, `complex64`,
+*  <b>`x`</b>: A `Tensor` of type `float32`, `float64`, `int32`, `int64`, `complex64`,
    or `complex128`.
-*  <b>`y`</b>: An `Output` of type `float32`, `float64`, `int32`, `int64`, `complex64`,
+*  <b>`y`</b>: A `Tensor` of type `float32`, `float64`, `int32`, `int64`, `complex64`,
    or `complex128`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output`.
+  A `Tensor`.
 
 
 - - -
@@ -799,13 +799,13 @@ Returns x + y element-wise.
 ##### Args:
 
 
-*  <b>`x`</b>: A `Output`. Must be one of the following types: `half`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `complex64`, `complex128`, `string`.
-*  <b>`y`</b>: A `Output`. Must have the same type as `x`.
+*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `half`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `complex64`, `complex128`, `string`.
+*  <b>`y`</b>: A `Tensor`. Must have the same type as `x`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  A `Output`. Has the same type as `x`.
+  A `Tensor`. Has the same type as `x`.
 
 
 - - -
@@ -820,34 +820,31 @@ Returns the truth value of x AND y element-wise.
 ##### Args:
 
 
-*  <b>`x`</b>: An `Output` of type `bool`.
-*  <b>`y`</b>: An `Output` of type `bool`.
+*  <b>`x`</b>: A `Tensor` of type `bool`.
+*  <b>`y`</b>: A `Tensor` of type `bool`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output` of type `bool`.
+  A `Tensor` of type `bool`.
 
 
 - - -
 
 #### `tf.Variable.__rdiv__(a, *args)` {#Variable.__rdiv__}
 
-Returns x / y element-wise.
-
-*NOTE*: `Div` supports broadcasting. More about broadcasting
-[here](http://docs.scipy.org/doc/numpy/user/basics.broadcasting.html)
+Divide two values using Python 2 semantics. Used for Tensor.__div__.
 
 ##### Args:
 
 
-*  <b>`x`</b>: A `Output`. Must be one of the following types: `half`, `float32`, `float64`, `uint8`, `int8`, `uint16`, `int16`, `int32`, `int64`, `complex64`, `complex128`.
-*  <b>`y`</b>: A `Output`. Must have the same type as `x`.
+*  <b>`x`</b>: `Tensor` numerator of real numeric type.
+*  <b>`y`</b>: `Tensor` denominator of real numeric type.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  A `Output`. Has the same type as `x`.
+  `x / y` returns the quotient of x and y.
 
 
 - - -
@@ -871,8 +868,8 @@ as well.
 ##### Args:
 
 
-*  <b>`x`</b>: `Output` numerator of real numeric type.
-*  <b>`y`</b>: `Output` denominator of real numeric type.
+*  <b>`x`</b>: `Tensor` numerator of real numeric type.
+*  <b>`y`</b>: `Tensor` denominator of real numeric type.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
@@ -889,21 +886,24 @@ as well.
 
 #### `tf.Variable.__rmod__(a, *args)` {#Variable.__rmod__}
 
-Returns element-wise remainder of division.
+Returns element-wise remainder of division. When `x < 0` xor `y < 0` is
 
-*NOTE*: `Mod` supports broadcasting. More about broadcasting
+true, this follows Python semantics in that the result here is consistent
+with a flooring divide. E.g. `floor(x / y) * y + mod(x, y) = x`.
+
+*NOTE*: `FloorMod` supports broadcasting. More about broadcasting
 [here](http://docs.scipy.org/doc/numpy/user/basics.broadcasting.html)
 
 ##### Args:
 
 
-*  <b>`x`</b>: A `Output`. Must be one of the following types: `int32`, `int64`, `float32`, `float64`.
-*  <b>`y`</b>: A `Output`. Must have the same type as `x`.
+*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `int32`, `int64`, `float32`, `float64`.
+*  <b>`y`</b>: A `Tensor`. Must have the same type as `x`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  A `Output`. Has the same type as `x`.
+  A `Tensor`. Has the same type as `x`.
 
 
 - - -
@@ -925,13 +925,13 @@ Returns the truth value of x OR y element-wise.
 ##### Args:
 
 
-*  <b>`x`</b>: An `Output` of type `bool`.
-*  <b>`y`</b>: An `Output` of type `bool`.
+*  <b>`x`</b>: A `Tensor` of type `bool`.
+*  <b>`y`</b>: A `Tensor` of type `bool`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output` of type `bool`.
+  A `Tensor` of type `bool`.
 
 
 - - -
@@ -952,15 +952,15 @@ tf.pow(x, y) ==> [[256, 65536], [9, 27]]
 ##### Args:
 
 
-*  <b>`x`</b>: An `Output` of type `float32`, `float64`, `int32`, `int64`, `complex64`,
+*  <b>`x`</b>: A `Tensor` of type `float32`, `float64`, `int32`, `int64`, `complex64`,
    or `complex128`.
-*  <b>`y`</b>: An `Output` of type `float32`, `float64`, `int32`, `int64`, `complex64`,
+*  <b>`y`</b>: A `Tensor` of type `float32`, `float64`, `int32`, `int64`, `complex64`,
    or `complex128`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output`.
+  A `Tensor`.
 
 
 - - -
@@ -975,47 +975,20 @@ Returns x - y element-wise.
 ##### Args:
 
 
-*  <b>`x`</b>: A `Output`. Must be one of the following types: `half`, `float32`, `float64`, `int32`, `int64`, `complex64`, `complex128`.
-*  <b>`y`</b>: A `Output`. Must have the same type as `x`.
+*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `half`, `float32`, `float64`, `int32`, `int64`, `complex64`, `complex128`.
+*  <b>`y`</b>: A `Tensor`. Must have the same type as `x`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  A `Output`. Has the same type as `x`.
+  A `Tensor`. Has the same type as `x`.
 
 
 - - -
 
 #### `tf.Variable.__rtruediv__(a, *args)` {#Variable.__rtruediv__}
 
-Divides x / y elementwise, always producing floating point results.
 
-The same as `tf.div` for floating point arguments, but casts integer arguments
-to floating point before dividing so that the result is always floating point.
-This op is generated by normal `x / y` division in Python 3 and in Python 2.7
-with `from __future__ import division`.  If you want integer division that
-rounds down, use `x // y` or `tf.floordiv`.
-
-`x` and `y` must have the same numeric type.  If the inputs are floating
-point, the output will have the same type.  If the inputs are integral, the
-inputs are cast to `float32` for `int8` and `int16` and `float64` for `int32`
-and `int64` (matching the behavior of Numpy).
-
-##### Args:
-
-
-*  <b>`x`</b>: `Output` numerator of numeric type.
-*  <b>`y`</b>: `Output` denominator of numeric type.
-*  <b>`name`</b>: A name for the operation (optional).
-
-##### Returns:
-
-  `x / y` evaluated in floating point.
-
-##### Raises:
-
-
-*  <b>`TypeError`</b>: If `x` and `y` have different dtypes.
 
 
 - - -
@@ -1044,47 +1017,20 @@ Returns x - y element-wise.
 ##### Args:
 
 
-*  <b>`x`</b>: A `Output`. Must be one of the following types: `half`, `float32`, `float64`, `int32`, `int64`, `complex64`, `complex128`.
-*  <b>`y`</b>: A `Output`. Must have the same type as `x`.
+*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `half`, `float32`, `float64`, `int32`, `int64`, `complex64`, `complex128`.
+*  <b>`y`</b>: A `Tensor`. Must have the same type as `x`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  A `Output`. Has the same type as `x`.
+  A `Tensor`. Has the same type as `x`.
 
 
 - - -
 
 #### `tf.Variable.__truediv__(a, *args)` {#Variable.__truediv__}
 
-Divides x / y elementwise, always producing floating point results.
 
-The same as `tf.div` for floating point arguments, but casts integer arguments
-to floating point before dividing so that the result is always floating point.
-This op is generated by normal `x / y` division in Python 3 and in Python 2.7
-with `from __future__ import division`.  If you want integer division that
-rounds down, use `x // y` or `tf.floordiv`.
-
-`x` and `y` must have the same numeric type.  If the inputs are floating
-point, the output will have the same type.  If the inputs are integral, the
-inputs are cast to `float32` for `int8` and `int16` and `float64` for `int32`
-and `int64` (matching the behavior of Numpy).
-
-##### Args:
-
-
-*  <b>`x`</b>: `Output` numerator of numeric type.
-*  <b>`y`</b>: `Output` denominator of numeric type.
-*  <b>`name`</b>: A name for the operation (optional).
-
-##### Returns:
-
-  `x / y` evaluated in floating point.
-
-##### Raises:
-
-
-*  <b>`TypeError`</b>: If `x` and `y` have different dtypes.
 
 
 - - -
@@ -1114,7 +1060,48 @@ the variable.
 
 ##### Returns:
 
-  An `Output`.
+  A `Tensor`.
+
+
+- - -
+
+#### `tf.Variable.load(value, session=None)` {#Variable.load}
+
+Load new value into this variable
+
+Writes new value to variable's memory. Doesn't add ops to the graph.
+
+This convenience method requires a session where the graph containing this
+variable has been launched. If no session is passed, the default session is
+used.  See the [Session class](../../api_docs/python/client.md#Session) for
+more information on launching a graph and on sessions.
+
+```python
+v = tf.Variable([1, 2])
+init = tf.global_variables_initializer()
+
+with tf.Session() as sess:
+    sess.run(init)
+    # Usage passing the session explicitly.
+    v.load([2, 3], sess)
+    print(v.eval(sess)) # prints [2 3]
+    # Usage with the default session.  The 'with' block
+    # above makes 'sess' the default session.
+    v.load([3, 4], sess)
+    print(v.eval()) # prints [3 4]
+```
+
+##### Args:
+
+
+*  <b>`value`</b>: New variable value
+*  <b>`session`</b>: The session to use to evaluate this variable. If
+      none, the default session is used.
+
+##### Raises:
+
+
+*  <b>`ValueError`</b>: Session is not passed and no default session
 
 
 - - -
@@ -1169,10 +1156,8 @@ Returns the last snapshot of this variable.
 You usually do not need to call this method as all ops that need the value
 of the variable call it automatically through a `convert_to_tensor()` call.
 
-Returns an `Output` which holds the value of the variable.  You can not
+Returns a `Tensor` which holds the value of the variable.  You can not
 assign a new value to this tensor as it is not a reference to the variable.
-See [`ref()`](#Variable.ref) if you want to get a reference to the
-variable.
 
 To avoid copies, if the consumer of the returned value is on the same device
 as the variable, this actually returns the live value of the variable, not
@@ -1181,7 +1166,7 @@ is on a different device it will get a copy of the variable.
 
 ##### Returns:
 
-  An `Output` containing the value of the variable.
+  A `Tensor` containing the value of the variable.
 
 
 
@@ -1409,9 +1394,9 @@ This makes it easier to chain operations that need to use the reset value.
 ##### Args:
 
 
-*  <b>`ref`</b>: A mutable `Output`.
+*  <b>`ref`</b>: A mutable `Tensor`.
     Should be from a `Variable` node. May be uninitialized.
-*  <b>`value`</b>: A `Output`. Must have the same type as `ref`.
+*  <b>`value`</b>: A `Tensor`. Must have the same type as `ref`.
     The value to be assigned to the variable.
 *  <b>`validate_shape`</b>: An optional `bool`. Defaults to `True`.
     If true, the operation will validate that the shape
@@ -1440,9 +1425,9 @@ This makes it easier to chain operations that need to use the reset value.
 ##### Args:
 
 
-*  <b>`ref`</b>: A mutable `Output`. Must be one of the following types: `float32`, `float64`, `int64`, `int32`, `uint8`, `uint16`, `int16`, `int8`, `complex64`, `complex128`, `qint8`, `quint8`, `qint32`, `half`.
+*  <b>`ref`</b>: A mutable `Tensor`. Must be one of the following types: `float32`, `float64`, `int64`, `int32`, `uint8`, `uint16`, `int16`, `int8`, `complex64`, `complex128`, `qint8`, `quint8`, `qint32`, `half`.
     Should be from a `Variable` node.
-*  <b>`value`</b>: A `Output`. Must have the same type as `ref`.
+*  <b>`value`</b>: A `Tensor`. Must have the same type as `ref`.
     The value to be added to the variable.
 *  <b>`use_locking`</b>: An optional `bool`. Defaults to `False`.
     If True, the addition will be protected by a lock;
@@ -1467,9 +1452,9 @@ This makes it easier to chain operations that need to use the reset value.
 ##### Args:
 
 
-*  <b>`ref`</b>: A mutable `Output`. Must be one of the following types: `float32`, `float64`, `int64`, `int32`, `uint8`, `uint16`, `int16`, `int8`, `complex64`, `complex128`, `qint8`, `quint8`, `qint32`, `half`.
+*  <b>`ref`</b>: A mutable `Tensor`. Must be one of the following types: `float32`, `float64`, `int64`, `int32`, `uint8`, `uint16`, `int16`, `int8`, `complex64`, `complex128`, `qint8`, `quint8`, `qint32`, `half`.
     Should be from a `Variable` node.
-*  <b>`value`</b>: A `Output`. Must have the same type as `ref`.
+*  <b>`value`</b>: A `Tensor`. Must have the same type as `ref`.
     The value to be subtracted to the variable.
 *  <b>`use_locking`</b>: An optional `bool`. Defaults to `False`.
     If True, the subtraction will be protected by a lock;
@@ -1668,7 +1653,7 @@ path can be passed directly to a call to `restore()`.
     `sharded`, this is the prefix of the sharded checkpoint filename.
 *  <b>`global_step`</b>: If provided the global step number is appended to
     `save_path` to create the checkpoint filename. The optional argument
-    can be an `Output`, an `Output` name or an integer.
+    can be a `Tensor`, a `Tensor` name or an integer.
 *  <b>`latest_filename`</b>: Optional name for the protocol buffer file that will
     contains the list of most recent checkpoint filenames.  That file,
     kept in the same directory as the checkpoint files, is automatically
@@ -1802,7 +1787,7 @@ Writes `MetaGraphDef` to save_path/filename.
 *  <b>`as_text`</b>: If `True`, writes the meta_graph as an ASCII proto.
 *  <b>`export_scope`</b>: Optional `string`. Name scope to remove.
 *  <b>`clear_devices`</b>: Whether or not to clear the device field for an `Operation`
-    or `Output` during export.
+    or `Tensor` during export.
 
 ##### Returns:
 
@@ -1964,7 +1949,7 @@ with tf.variable_scope("foo", reuse=True)
 
 If initializer is `None` (the default), the default initializer passed in
 the variable scope will be used. If that one is `None` too, a
-`uniform_unit_scaling_initializer` will be used. The initializer can also be
+`glorot_uniform_initializer` will be used. The initializer can also be
 a Tensor, in which case the variable is initialized to this value and shape.
 
 Similarly, if the regularizer is `None` (the default), the default regularizer
@@ -1972,7 +1957,7 @@ passed in the variable scope will be used (if that is `None` too,
 then by default no regularization is performed).
 
 If a partitioner is provided, a `PartitionedVariable` is returned.
-Accessing this object as an `Output` returns the shards concatenated along
+Accessing this object as a `Tensor` returns the shards concatenated along
 the partition axis.
 
 Some useful partitioners are available.  See, e.g.,
@@ -1992,6 +1977,93 @@ Some useful partitioners are available.  See, e.g.,
     `GraphKeys.TRAINABLE_VARIABLES` (see `tf.Variable`).
 *  <b>`collections`</b>: List of graph collections keys to add the Variable to.
     Defaults to `[GraphKeys.GLOBAL_VARIABLES]` (see `tf.Variable`).
+*  <b>`caching_device`</b>: Optional device string or function describing where the
+    Variable should be cached for reading.  Defaults to the Variable's
+    device.  If not `None`, caches on another device.  Typical use is to
+    cache on the device where the Ops using the Variable reside, to
+    deduplicate copying through `Switch` and other conditional statements.
+*  <b>`partitioner`</b>: Optional callable that accepts a fully defined `TensorShape`
+    and `dtype` of the Variable to be created, and returns a list of
+    partitions for each axis (currently only one axis can be partitioned).
+*  <b>`validate_shape`</b>: If False, allows the variable to be initialized with a
+      value of unknown shape. If True, the default, the shape of initial_value
+      must be known.
+*  <b>`custom_getter`</b>: Callable that takes as a first argument the true getter, and
+    allows overwriting the internal get_variable method.
+    The signature of `custom_getter` should match that of this method,
+    but the most future-proof version will allow for changes:
+    `def custom_getter(getter, *args, **kwargs)`.  Direct access to
+    all `get_variable` parameters is also allowed:
+    `def custom_getter(getter, name, *args, **kwargs)`.  A simple identity
+    custom getter that simply creates variables with modified names is:
+    ```python
+    def custom_getter(getter, name, *args, **kwargs):
+      return getter(name + '_suffix', *args, **kwargs)
+    ```
+
+##### Returns:
+
+  The created or existing `Variable` (or `PartitionedVariable`, if a
+  partitioner was used).
+
+##### Raises:
+
+
+*  <b>`ValueError`</b>: when creating a new variable and shape is not declared,
+    when violating reuse during variable creation, or when `initializer` dtype
+    and `dtype` don't match. Reuse is set inside `variable_scope`.
+
+
+- - -
+
+### `tf.get_local_variable(*args, **kwargs)` {#get_local_variable}
+
+Gets an existing *local* variable or creates a new one.
+
+Behavior is the same as in `get_variable`, except that variables are
+added to the `LOCAL_VARIABLES` collection and `trainable` is set to
+`False`.
+This function prefixes the name with the current variable scope
+and performs reuse checks. See the
+[Variable Scope How To](../../how_tos/variable_scope/index.md)
+for an extensive description of how reusing works. Here is a basic example:
+
+```python
+with tf.variable_scope("foo"):
+    v = tf.get_variable("v", [1])  # v.name == "foo/v:0"
+    w = tf.get_variable("w", [1])  # w.name == "foo/w:0"
+with tf.variable_scope("foo", reuse=True)
+    v1 = tf.get_variable("v")  # The same as v above.
+```
+
+If initializer is `None` (the default), the default initializer passed in
+the variable scope will be used. If that one is `None` too, a
+`glorot_uniform_initializer` will be used. The initializer can also be
+a Tensor, in which case the variable is initialized to this value and shape.
+
+Similarly, if the regularizer is `None` (the default), the default regularizer
+passed in the variable scope will be used (if that is `None` too,
+then by default no regularization is performed).
+
+If a partitioner is provided, a `PartitionedVariable` is returned.
+Accessing this object as a `Tensor` returns the shards concatenated along
+the partition axis.
+
+Some useful partitioners are available.  See, e.g.,
+`variable_axis_size_partitioner` and `min_max_variable_partitioner`.
+
+##### Args:
+
+
+*  <b>`name`</b>: The name of the new or existing variable.
+*  <b>`shape`</b>: Shape of the new or existing variable.
+*  <b>`dtype`</b>: Type of the new or existing variable (defaults to `DT_FLOAT`).
+*  <b>`initializer`</b>: Initializer for the variable if one is created.
+*  <b>`regularizer`</b>: A (Tensor -> Tensor or None) function; the result of
+    applying it on a newly created variable will be added to the collection
+    GraphKeys.REGULARIZATION_LOSSES and can be used for regularization.
+*  <b>`collections`</b>: List of graph collections keys to add the Variable to.
+    Defaults to `[GraphKeys.LOCAL_VARIABLES]` (see `tf.Variable`).
 *  <b>`caching_device`</b>: Optional device string or function describing where the
     Variable should be cached for reading.  Defaults to the Variable's
     device.  If not `None`, caches on another device.  Typical use is to
@@ -2253,7 +2325,7 @@ then all its sub-scopes become reusing as well.
 *  <b>`default_name`</b>: The default name to use if the `name_or_scope` argument is
     `None`, this name will be uniquified. If name_or_scope is provided it
     won't be used and therefore it is not required and can be None.
-*  <b>`values`</b>: The list of `Output` arguments that are passed to the op function.
+*  <b>`values`</b>: The list of `Tensor` arguments that are passed to the op function.
 *  <b>`initializer`</b>: default initializer for variables within this scope.
 *  <b>`regularizer`</b>: default regularizer for variables within this scope.
 *  <b>`caching_device`</b>: default caching device for variables within this scope.
@@ -2292,7 +2364,7 @@ Returns the current variable scope.
 
 - - -
 
-### `tf.make_template(name_, func_, create_scope_now_=False, unique_name_=None, **kwargs)` {#make_template}
+### `tf.make_template(name_, func_, create_scope_now_=False, unique_name_=None, custom_getter_=None, **kwargs)` {#make_template}
 
 Given an arbitrary function, wrap it so that it does variable sharing.
 
@@ -2307,7 +2379,7 @@ have the following properties:
    that are intended to be locals can be created by specifying
    `tf.Variable(..., trainable=false)`.
 * The function may use variable scopes and other templates internally to
-    create and reuse variables, but it shouldn't use `tf.all_variables` to
+    create and reuse variables, but it shouldn't use `tf.global_variables` to
     capture variables that are defined outside of the scope of the function.
 * Internal scopes and variable names should not depend on any arguments that
     are not supplied to `make_template`. In general you will get a ValueError
@@ -2383,6 +2455,9 @@ reduce the likelihood of collisions with kwargs.
 *  <b>`unique_name_`</b>: When used, it overrides name_ and is not made unique. If a
     template of the same scope/unique_name already exists and reuse is false,
     an error is raised. Defaults to None.
+*  <b>`custom_getter_`</b>: Optional custom getter for variables used in `func_`. See
+    the [`get_variable`](#get_variable) `custom_getter` documentation for
+    more information.
 *  <b>`**kwargs`</b>: Keyword arguments to apply to `func_`.
 
 ##### Returns:
@@ -2412,9 +2487,9 @@ Use this function to prevent regularization of variables.
 
 - - -
 
-### `tf.constant_initializer(value=0, dtype=tf.float32)` {#constant_initializer}
+### `class tf.constant_initializer` {#constant_initializer}
 
-Returns an initializer that generates tensors with constant values.
+Initializer that generates tensors with constant values.
 
 The resulting tensor is populated with values of type `dtype`, as
 specified by arguments `value` following the desired `shape` of the
@@ -2429,20 +2504,13 @@ in `value` will be used to fill the remaining entries. If the total number of
 elements in `value` is greater than the number of elements required by the
 tensor shape, the initializer will raise a `ValueError`.
 
-##### Args:
-
-
-*  <b>`value`</b>: A Python scalar, list of values, or a N-dimensional numpy array. All
+Args:
+  value: A Python scalar, list of values, or a N-dimensional numpy array. All
     elements of the initialized variable will be set to the corresponding
     value in the `value` argument.
-*  <b>`dtype`</b>: The data type.
+  dtype: The data type.
 
-##### Returns:
-
-  An initializer that generates tensors with constant values.
-
-##### Examples:
-
+Examples:
   The following example can be rewritten using a numpy.ndarray instead
   of the `value` list, even reshaped, as shown in the two commented lines
   below the `value` list initialization.
@@ -2484,101 +2552,123 @@ tensor shape, the initializer will raise a `ValueError`.
   >>> with tf.Session():
   >>>   x = tf.get_variable('x', shape=[2, 3], initializer=init)
 
-
-*  <b>`ValueError`</b>: Too many elements provided. Needed at most 6, but received 8
+  ValueError: Too many elements provided. Needed at most 6, but received 8
 ```
+- - -
+
+#### `tf.constant_initializer.__call__(shape, dtype=None, partition_info=None)` {#constant_initializer.__call__}
+
+
 
 
 - - -
 
-### `tf.random_normal_initializer(mean=0.0, stddev=1.0, seed=None, dtype=tf.float32)` {#random_normal_initializer}
-
-Returns an initializer that generates tensors with a normal distribution.
-
-##### Args:
+#### `tf.constant_initializer.__init__(value=0, dtype=tf.float32)` {#constant_initializer.__init__}
 
 
-*  <b>`mean`</b>: a python scalar or a scalar tensor. Mean of the random values
+
+
+
+- - -
+
+### `class tf.random_normal_initializer` {#random_normal_initializer}
+
+Initializer that generates tensors with a normal distribution.
+
+Args:
+  mean: a python scalar or a scalar tensor. Mean of the random values
     to generate.
-*  <b>`stddev`</b>: a python scalar or a scalar tensor. Standard deviation of the
+  stddev: a python scalar or a scalar tensor. Standard deviation of the
     random values to generate.
-*  <b>`seed`</b>: A Python integer. Used to create random seeds. See
+  seed: A Python integer. Used to create random seeds. See
     [`set_random_seed`](../../api_docs/python/constant_op.md#set_random_seed)
     for behavior.
-*  <b>`dtype`</b>: The data type. Only floating point types are supported.
+  dtype: The data type. Only floating point types are supported.
+- - -
 
-##### Returns:
-
-  An initializer that generates tensors with a normal distribution.
-
-##### Raises:
+#### `tf.random_normal_initializer.__call__(shape, dtype=None, partition_info=None)` {#random_normal_initializer.__call__}
 
 
-*  <b>`ValueError`</b>: if `dtype` is not a floating point type.
 
 
 - - -
 
-### `tf.truncated_normal_initializer(mean=0.0, stddev=1.0, seed=None, dtype=tf.float32)` {#truncated_normal_initializer}
+#### `tf.random_normal_initializer.__init__(mean=0.0, stddev=1.0, seed=None, dtype=tf.float32)` {#random_normal_initializer.__init__}
 
-Returns an initializer that generates a truncated normal distribution.
+
+
+
+
+- - -
+
+### `class tf.truncated_normal_initializer` {#truncated_normal_initializer}
+
+Initializer that generates a truncated normal distribution.
 
 These values are similar to values from a `random_normal_initializer`
 except that values more than two standard deviations from the mean
 are discarded and re-drawn. This is the recommended initializer for
 neural network weights and filters.
 
-##### Args:
-
-
-*  <b>`mean`</b>: a python scalar or a scalar tensor. Mean of the random values
+Args:
+  mean: a python scalar or a scalar tensor. Mean of the random values
     to generate.
-*  <b>`stddev`</b>: a python scalar or a scalar tensor. Standard deviation of the
+  stddev: a python scalar or a scalar tensor. Standard deviation of the
     random values to generate.
-*  <b>`seed`</b>: A Python integer. Used to create random seeds. See
+  seed: A Python integer. Used to create random seeds. See
     [`set_random_seed`](../../api_docs/python/constant_op.md#set_random_seed)
     for behavior.
-*  <b>`dtype`</b>: The data type. Only floating point types are supported.
+  dtype: The data type. Only floating point types are supported.
+- - -
 
-##### Returns:
-
-  An initializer that generates tensors with a truncated normal
-  distribution.
-
-##### Raises:
+#### `tf.truncated_normal_initializer.__call__(shape, dtype=None, partition_info=None)` {#truncated_normal_initializer.__call__}
 
 
-*  <b>`ValueError`</b>: if `dtype` is not a floating point type.
 
 
 - - -
 
-### `tf.random_uniform_initializer(minval=0, maxval=None, seed=None, dtype=tf.float32)` {#random_uniform_initializer}
-
-Returns an initializer that generates tensors with a uniform distribution.
-
-##### Args:
+#### `tf.truncated_normal_initializer.__init__(mean=0.0, stddev=1.0, seed=None, dtype=tf.float32)` {#truncated_normal_initializer.__init__}
 
 
-*  <b>`minval`</b>: A python scalar or a scalar tensor. Lower bound of the range
+
+
+
+- - -
+
+### `class tf.random_uniform_initializer` {#random_uniform_initializer}
+
+Initializer that generates tensors with a uniform distribution.
+
+Args:
+  minval: A python scalar or a scalar tensor. Lower bound of the range
     of random values to generate.
-*  <b>`maxval`</b>: A python scalar or a scalar tensor. Upper bound of the range
+  maxval: A python scalar or a scalar tensor. Upper bound of the range
     of random values to generate.  Defaults to 1 for float types.
-*  <b>`seed`</b>: A Python integer. Used to create random seeds. See
+  seed: A Python integer. Used to create random seeds. See
     [`set_random_seed`](../../api_docs/python/constant_op.md#set_random_seed)
     for behavior.
-*  <b>`dtype`</b>: The data type.
+  dtype: The data type.
+- - -
 
-##### Returns:
+#### `tf.random_uniform_initializer.__call__(shape, dtype=None, partition_info=None)` {#random_uniform_initializer.__call__}
 
-  An initializer that generates tensors with a uniform distribution.
+
 
 
 - - -
 
-### `tf.uniform_unit_scaling_initializer(factor=1.0, seed=None, dtype=tf.float32)` {#uniform_unit_scaling_initializer}
+#### `tf.random_uniform_initializer.__init__(minval=0, maxval=None, seed=None, dtype=tf.float32)` {#random_uniform_initializer.__init__}
 
-Returns an initializer that generates tensors without scaling variance.
+
+
+
+
+- - -
+
+### `class tf.uniform_unit_scaling_initializer` {#uniform_unit_scaling_initializer}
+
+Initializer that generates tensors without scaling variance.
 
 When initializing a deep network, it is in principle advantageous to keep
 the scale of the input variance constant, so it does not explode or diminish
@@ -2596,72 +2686,101 @@ See [Sussillo et al., 2014](https://arxiv.org/abs/1412.6558)
 and the calculation of constants. In section 2.3 there, the constants were
 numerically computed: for a linear layer it's 1.0, relu: ~1.43, tanh: ~1.15.
 
-##### Args:
-
-
-*  <b>`factor`</b>: Float.  A multiplicative factor by which the values will be scaled.
-*  <b>`seed`</b>: A Python integer. Used to create random seeds. See
+Args:
+  factor: Float.  A multiplicative factor by which the values will be scaled.
+  seed: A Python integer. Used to create random seeds. See
     [`set_random_seed`](../../api_docs/python/constant_op.md#set_random_seed)
     for behavior.
-*  <b>`dtype`</b>: The data type. Only floating point types are supported.
+  dtype: The data type. Only floating point types are supported.
+- - -
 
-##### Returns:
-
-  An initializer that generates tensors with unit variance.
-
-##### Raises:
+#### `tf.uniform_unit_scaling_initializer.__call__(shape, dtype=None, partition_info=None)` {#uniform_unit_scaling_initializer.__call__}
 
 
-*  <b>`ValueError`</b>: if `dtype` is not a floating point type.
 
 
 - - -
 
-### `tf.zeros_initializer(shape, dtype=tf.float32, partition_info=None)` {#zeros_initializer}
-
-An adaptor for zeros() to match the Initializer spec.
+#### `tf.uniform_unit_scaling_initializer.__init__(factor=1.0, seed=None, dtype=tf.float32)` {#uniform_unit_scaling_initializer.__init__}
 
 
-- - -
 
-### `tf.ones_initializer(dtype=tf.float32, partition_info=None)` {#ones_initializer}
-
-An adaptor for ones() to match the Initializer spec.
 
 
 - - -
 
-### `tf.orthogonal_initializer(gain=1.0, dtype=tf.float32, seed=None)` {#orthogonal_initializer}
+### `class tf.zeros_initializer` {#zeros_initializer}
 
-Returns an initializer that generates an orthogonal matrix or a reshaped 
-orthogonal matrix.
+Initializer that generates tensors initialized to 0.
+- - -
+
+#### `tf.zeros_initializer.__call__(shape, dtype=None, partition_info=None)` {#zeros_initializer.__call__}
+
+
+
+
+- - -
+
+#### `tf.zeros_initializer.__init__(dtype=tf.float32)` {#zeros_initializer.__init__}
+
+
+
+
+
+- - -
+
+### `class tf.ones_initializer` {#ones_initializer}
+
+Initializer that generates tensors initialized to 1.
+- - -
+
+#### `tf.ones_initializer.__call__(shape, dtype=None, partition_info=None)` {#ones_initializer.__call__}
+
+
+
+
+- - -
+
+#### `tf.ones_initializer.__init__(dtype=tf.float32)` {#ones_initializer.__init__}
+
+
+
+
+
+- - -
+
+### `class tf.orthogonal_initializer` {#orthogonal_initializer}
+
+Initializer that generates an orthogonal matrix.
 
 If the shape of the tensor to initialize is two-dimensional, i is initialized
 with an orthogonal matrix obtained from the singular value decomposition of a
 matrix of uniform random numbers.
 
-If the shape of the tensor to initialize is more than two-dimensional, a matrix
-of shape `(shape[0] * ... * shape[n - 2], shape[n - 1])` is initialized, where
-`n` is the length of the shape vector. The matrix is subsequently reshaped to
-give a tensor of the desired shape.
+If the shape of the tensor to initialize is more than two-dimensional,
+a matrix of shape `(shape[0] * ... * shape[n - 2], shape[n - 1])`
+is initialized, where `n` is the length of the shape vector.
+The matrix is subsequently reshaped to give a tensor of the desired shape.
 
-##### Args:
-
-
-*  <b>`gain`</b>: multiplicative factor to apply to the orthogonal matrix
-*  <b>`dtype`</b>: The type of the output.
-*  <b>`seed`</b>: A Python integer. Used to create random seeds. See
+Args:
+  gain: multiplicative factor to apply to the orthogonal matrix
+  dtype: The type of the output.
+  seed: A Python integer. Used to create random seeds. See
     [`set_random_seed`](../../api_docs/python/constant_op.md#set_random_seed)
     for behavior.
+- - -
 
-##### Returns:
-
-  An initializer that generates orthogonal tensors
-
-##### Raises:
+#### `tf.orthogonal_initializer.__call__(shape, dtype=None, partition_info=None)` {#orthogonal_initializer.__call__}
 
 
-*  <b>`ValueError`</b>: if `dtype` is not a floating point type or if `shape` has fewer than two entries.
+
+
+- - -
+
+#### `tf.orthogonal_initializer.__init__(gain=1.0, dtype=tf.float32, seed=None)` {#orthogonal_initializer.__init__}
+
+
+
 
 
 
@@ -2788,7 +2907,7 @@ This operation outputs `ref` after the update is done.
 This makes it easier to chain operations that need to use the reset value.
 
 If values in `ref` is to be updated more than once, because there are
-duplicate entires in `indices`, the order at which the updates happen
+duplicate entries in `indices`, the order at which the updates happen
 for each value is undefined.
 
 Requires `updates.shape = indices.shape + ref.shape[1:]`.
@@ -2800,10 +2919,10 @@ Requires `updates.shape = indices.shape + ref.shape[1:]`.
 ##### Args:
 
 
-*  <b>`ref`</b>: A mutable `Output`. Should be from a `Variable` node.
-*  <b>`indices`</b>: A `Output`. Must be one of the following types: `int32`, `int64`.
+*  <b>`ref`</b>: A mutable `Tensor`. Should be from a `Variable` node.
+*  <b>`indices`</b>: A `Tensor`. Must be one of the following types: `int32`, `int64`.
     A tensor of indices into the first dimension of `ref`.
-*  <b>`updates`</b>: A `Output`. Must have the same type as `ref`.
+*  <b>`updates`</b>: A `Tensor`. Must have the same type as `ref`.
     A tensor of updated values to store in `ref`.
 *  <b>`use_locking`</b>: An optional `bool`. Defaults to `True`.
     If True, the assignment will be protected by a lock;
@@ -2848,11 +2967,11 @@ Requires `updates.shape = indices.shape + ref.shape[1:]`.
 ##### Args:
 
 
-*  <b>`ref`</b>: A mutable `Output`. Must be one of the following types: `float32`, `float64`, `int64`, `int32`, `uint8`, `uint16`, `int16`, `int8`, `complex64`, `complex128`, `qint8`, `quint8`, `qint32`, `half`.
+*  <b>`ref`</b>: A mutable `Tensor`. Must be one of the following types: `float32`, `float64`, `int64`, `int32`, `uint8`, `uint16`, `int16`, `int8`, `complex64`, `complex128`, `qint8`, `quint8`, `qint32`, `half`.
     Should be from a `Variable` node.
-*  <b>`indices`</b>: A `Output`. Must be one of the following types: `int32`, `int64`.
+*  <b>`indices`</b>: A `Tensor`. Must be one of the following types: `int32`, `int64`.
     A tensor of indices into the first dimension of `ref`.
-*  <b>`updates`</b>: A `Output`. Must have the same type as `ref`.
+*  <b>`updates`</b>: A `Tensor`. Must have the same type as `ref`.
     A tensor of updated values to add to `ref`.
 *  <b>`use_locking`</b>: An optional `bool`. Defaults to `False`.
     If True, the addition will be protected by a lock;
@@ -2895,11 +3014,11 @@ Requires `updates.shape = indices.shape + ref.shape[1:]`.
 ##### Args:
 
 
-*  <b>`ref`</b>: A mutable `Output`. Must be one of the following types: `float32`, `float64`, `int64`, `int32`, `uint8`, `uint16`, `int16`, `int8`, `complex64`, `complex128`, `qint8`, `quint8`, `qint32`, `half`.
+*  <b>`ref`</b>: A mutable `Tensor`. Must be one of the following types: `float32`, `float64`, `int64`, `int32`, `uint8`, `uint16`, `int16`, `int8`, `complex64`, `complex128`, `qint8`, `quint8`, `qint32`, `half`.
     Should be from a `Variable` node.
-*  <b>`indices`</b>: A `Output`. Must be one of the following types: `int32`, `int64`.
+*  <b>`indices`</b>: A `Tensor`. Must be one of the following types: `int32`, `int64`.
     A tensor of indices into the first dimension of `ref`.
-*  <b>`updates`</b>: A `Output`. Must have the same type as `ref`.
+*  <b>`updates`</b>: A `Tensor`. Must have the same type as `ref`.
     A tensor of updated values to subtract from `ref`.
 *  <b>`use_locking`</b>: An optional `bool`. Defaults to `False`.
     If True, the subtraction will be protected by a lock;
@@ -2940,11 +3059,11 @@ Requires `updates.shape = indices.shape + ref.shape[1:]`.
 ##### Args:
 
 
-*  <b>`ref`</b>: A mutable `Output`. Must be one of the following types: `float32`, `float64`, `int64`, `int32`, `uint8`, `uint16`, `int16`, `int8`, `complex64`, `complex128`, `qint8`, `quint8`, `qint32`, `half`.
+*  <b>`ref`</b>: A mutable `Tensor`. Must be one of the following types: `float32`, `float64`, `int64`, `int32`, `uint8`, `uint16`, `int16`, `int8`, `complex64`, `complex128`, `qint8`, `quint8`, `qint32`, `half`.
     Should be from a `Variable` node.
-*  <b>`indices`</b>: A `Output`. Must be one of the following types: `int32`, `int64`.
+*  <b>`indices`</b>: A `Tensor`. Must be one of the following types: `int32`, `int64`.
     A tensor of indices into the first dimension of `ref`.
-*  <b>`updates`</b>: A `Output`. Must have the same type as `ref`.
+*  <b>`updates`</b>: A `Tensor`. Must have the same type as `ref`.
     A tensor of updated values to multiply to `ref`.
 *  <b>`use_locking`</b>: An optional `bool`. Defaults to `False`.
     If True, the operation will be protected by a lock;
@@ -2985,11 +3104,11 @@ Requires `updates.shape = indices.shape + ref.shape[1:]`.
 ##### Args:
 
 
-*  <b>`ref`</b>: A mutable `Output`. Must be one of the following types: `float32`, `float64`, `int64`, `int32`, `uint8`, `uint16`, `int16`, `int8`, `complex64`, `complex128`, `qint8`, `quint8`, `qint32`, `half`.
+*  <b>`ref`</b>: A mutable `Tensor`. Must be one of the following types: `float32`, `float64`, `int64`, `int32`, `uint8`, `uint16`, `int16`, `int8`, `complex64`, `complex128`, `qint8`, `quint8`, `qint32`, `half`.
     Should be from a `Variable` node.
-*  <b>`indices`</b>: A `Output`. Must be one of the following types: `int32`, `int64`.
+*  <b>`indices`</b>: A `Tensor`. Must be one of the following types: `int32`, `int64`.
     A tensor of indices into the first dimension of `ref`.
-*  <b>`updates`</b>: A `Output`. Must have the same type as `ref`.
+*  <b>`updates`</b>: A `Tensor`. Must have the same type as `ref`.
     A tensor of values that `ref` is divided by.
 *  <b>`use_locking`</b>: An optional `bool`. Defaults to `False`.
     If True, the operation will be protected by a lock;
@@ -3010,7 +3129,7 @@ Applies sparse `updates` to individual values or slices within a given
 
 variable according to `indices`.
 
-`ref` is an `Output` with rank `P` and `indices` is an `Output` of rank `Q`.
+`ref` is a `Tensor` with rank `P` and `indices` is a `Tensor` of rank `Q`.
 
 `indices` must be integer tensor, containing indices into `ref`.
 It must be shape `[d_0, ..., d_{Q-2}, K]` where `0 < K <= P`.
@@ -3019,7 +3138,7 @@ The innermost dimension of `indices` (with length `K`) corresponds to
 indices into elements (if `K = P`) or slices (if `K < P`) along the `K`th
 dimension of `ref`.
 
-`updates` is `Output` of rank `Q-1+P-K` with shape:
+`updates` is `Tensor` of rank `Q-1+P-K` with shape:
 
 ```
 [d_0, ..., d_{Q-2}, ref.shape[K], ..., ref.shape[P-1]].
@@ -3045,11 +3164,11 @@ slices.
 ##### Args:
 
 
-*  <b>`ref`</b>: A mutable `Output`. A mutable Tensor. Should be from a Variable node.
-*  <b>`indices`</b>: A `Output`. Must be one of the following types: `int32`, `int64`.
+*  <b>`ref`</b>: A mutable `Tensor`. A mutable Tensor. Should be from a Variable node.
+*  <b>`indices`</b>: A `Tensor`. Must be one of the following types: `int32`, `int64`.
     A Tensor. Must be one of the following types: int32, int64.
     A tensor of indices into ref.
-*  <b>`updates`</b>: A `Output`. Must have the same type as `ref`.
+*  <b>`updates`</b>: A `Tensor`. Must have the same type as `ref`.
     A Tensor. Must have the same type as ref. A tensor of updated
     values to add to ref.
 *  <b>`use_locking`</b>: An optional `bool`. Defaults to `True`.
@@ -3060,7 +3179,7 @@ slices.
 
 ##### Returns:
 
-  A mutable `Output`. Has the same type as `ref`.
+  A mutable `Tensor`. Has the same type as `ref`.
   Same as ref. Returned as a convenience for operations that want to
   use the updated values after the update is done.
 
@@ -3073,7 +3192,7 @@ Applies sparse addition between `updates` and individual values or slices
 
 within a given variable according to `indices`.
 
-`ref` is an `Output` with rank `P` and `indices` is an `Output` of rank `Q`.
+`ref` is a `Tensor` with rank `P` and `indices` is a `Tensor` of rank `Q`.
 
 `indices` must be integer tensor, containing indices into `ref`.
 It must be shape `[d_0, ..., d_{Q-2}, K]` where `0 < K <= P`.
@@ -3082,7 +3201,7 @@ The innermost dimension of `indices` (with length `K`) corresponds to
 indices into elements (if `K = P`) or slices (if `K < P`) along the `K`th
 dimension of `ref`.
 
-`updates` is `Output` of rank `Q-1+P-K` with shape:
+`updates` is `Tensor` of rank `Q-1+P-K` with shape:
 
 ```
 [d_0, ..., d_{Q-2}, ref.shape[K], ..., ref.shape[P-1]].
@@ -3108,12 +3227,12 @@ slices.
 ##### Args:
 
 
-*  <b>`ref`</b>: A mutable `Output`. Must be one of the following types: `float32`, `float64`, `int64`, `int32`, `uint8`, `uint16`, `int16`, `int8`, `complex64`, `complex128`, `qint8`, `quint8`, `qint32`, `half`.
+*  <b>`ref`</b>: A mutable `Tensor`. Must be one of the following types: `float32`, `float64`, `int64`, `int32`, `uint8`, `uint16`, `int16`, `int8`, `complex64`, `complex128`, `qint8`, `quint8`, `qint32`, `half`.
     A mutable Tensor. Should be from a Variable node.
-*  <b>`indices`</b>: A `Output`. Must be one of the following types: `int32`, `int64`.
+*  <b>`indices`</b>: A `Tensor`. Must be one of the following types: `int32`, `int64`.
     A Tensor. Must be one of the following types: int32, int64.
     A tensor of indices into ref.
-*  <b>`updates`</b>: A `Output`. Must have the same type as `ref`.
+*  <b>`updates`</b>: A `Tensor`. Must have the same type as `ref`.
     A Tensor. Must have the same type as ref. A tensor of updated values
     to add to ref.
 *  <b>`use_locking`</b>: An optional `bool`. Defaults to `False`.
@@ -3124,7 +3243,7 @@ slices.
 
 ##### Returns:
 
-  A mutable `Output`. Has the same type as `ref`.
+  A mutable `Tensor`. Has the same type as `ref`.
   Same as ref. Returned as a convenience for operations that want
   to use the updated values after the update is done.
 
@@ -3137,7 +3256,7 @@ Applies sparse subtraction between `updates` and individual values or slices
 
 within a given variable according to `indices`.
 
-`ref` is an `Output` with rank `P` and `indices` is an `Output` of rank `Q`.
+`ref` is a `Tensor` with rank `P` and `indices` is a `Tensor` of rank `Q`.
 
 `indices` must be integer tensor, containing indices into `ref`.
 It must be shape `[d_0, ..., d_{Q-2}, K]` where `0 < K <= P`.
@@ -3146,7 +3265,7 @@ The innermost dimension of `indices` (with length `K`) corresponds to
 indices into elements (if `K = P`) or slices (if `K < P`) along the `K`th
 dimension of `ref`.
 
-`updates` is `Output` of rank `Q-1+P-K` with shape:
+`updates` is `Tensor` of rank `Q-1+P-K` with shape:
 
 ```
 [d_0, ..., d_{Q-2}, ref.shape[K], ..., ref.shape[P-1]].
@@ -3172,12 +3291,12 @@ slices.
 ##### Args:
 
 
-*  <b>`ref`</b>: A mutable `Output`. Must be one of the following types: `float32`, `float64`, `int64`, `int32`, `uint8`, `uint16`, `int16`, `int8`, `complex64`, `complex128`, `qint8`, `quint8`, `qint32`, `half`.
+*  <b>`ref`</b>: A mutable `Tensor`. Must be one of the following types: `float32`, `float64`, `int64`, `int32`, `uint8`, `uint16`, `int16`, `int8`, `complex64`, `complex128`, `qint8`, `quint8`, `qint32`, `half`.
     A mutable Tensor. Should be from a Variable node.
-*  <b>`indices`</b>: A `Output`. Must be one of the following types: `int32`, `int64`.
+*  <b>`indices`</b>: A `Tensor`. Must be one of the following types: `int32`, `int64`.
     A Tensor. Must be one of the following types: int32, int64.
     A tensor of indices into ref.
-*  <b>`updates`</b>: A `Output`. Must have the same type as `ref`.
+*  <b>`updates`</b>: A `Tensor`. Must have the same type as `ref`.
     A Tensor. Must have the same type as ref. A tensor of updated values
     to subtract from ref.
 *  <b>`use_locking`</b>: An optional `bool`. Defaults to `False`.
@@ -3188,7 +3307,7 @@ slices.
 
 ##### Returns:
 
-  A mutable `Output`. Has the same type as `ref`.
+  A mutable `Tensor`. Has the same type as `ref`.
   Same as ref. Returned as a convenience for operations that want
   to use the updated values after the update is done.
 
@@ -3226,9 +3345,10 @@ tf.shape(b.values) => [2, 10]
 
 ##### Args:
 
-  * `a`: An `IndexedSlices` instance.
-  * `mask_indices`: Indices of elements to mask.
-  * `name`: A name for the operation (optional).
+
+*  <b>`a`</b>: An `IndexedSlices` instance.
+*  <b>`mask_indices`</b>: Indices of elements to mask.
+*  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
@@ -3241,10 +3361,10 @@ tf.shape(b.values) => [2, 10]
 
 A sparse representation of a set of tensor slices at given indices.
 
-This class is a simple wrapper for a pair of `Output` objects:
+This class is a simple wrapper for a pair of `Tensor` objects:
 
-* `values`: An `Output` of any dtype with shape `[D0, D1, ..., Dn]`.
-* `indices`: A 1-D integer `Output` with shape `[D0]`.
+* `values`: A `Tensor` of any dtype with shape `[D0, D1, ..., Dn]`.
+* `indices`: A 1-D integer `Tensor` with shape `[D0]`.
 
 An `IndexedSlices` is typically used to represent a subset of a larger
 tensor `dense` of shape `[LARGE0, D1, .. , DN]` where `LARGE0 >> D0`.
@@ -3277,21 +3397,21 @@ Creates an `IndexedSlices`.
 
 #### `tf.IndexedSlices.values` {#IndexedSlices.values}
 
-An `Output` containing the values of the slices.
+A `Tensor` containing the values of the slices.
 
 
 - - -
 
 #### `tf.IndexedSlices.indices` {#IndexedSlices.indices}
 
-A 1-D `Output` containing the indices of the slices.
+A 1-D `Tensor` containing the indices of the slices.
 
 
 - - -
 
 #### `tf.IndexedSlices.dense_shape` {#IndexedSlices.dense_shape}
 
-A 1-D `Output` containing the shape of the corresponding dense tensor.
+A 1-D `Tensor` containing the shape of the corresponding dense tensor.
 
 
 
@@ -3398,7 +3518,7 @@ a subgraph.
     for easy import later into new name scopes. If `None`, the whole graph
     is exported. graph_def and export_scope cannot both be specified.
 *  <b>`clear_devices`</b>: Whether or not to clear the device field for an `Operation`
-    or `Output` during export.
+    or `Tensor` during export.
 *  <b>`**kwargs`</b>: Optional keyed arguments.
 
 ##### Returns:
@@ -3471,7 +3591,7 @@ device assignments have not changed.
 *  <b>`meta_graph_or_file`</b>: `MetaGraphDef` protocol buffer or filename (including
     the path) containing a `MetaGraphDef`.
 *  <b>`clear_devices`</b>: Whether or not to clear the device field for an `Operation`
-    or `Output` during import.
+    or `Tensor` during import.
 *  <b>`import_scope`</b>: Optional `string`. Name scope to add. Only used when
     initializing from protocol buffer.
 *  <b>`**kwargs`</b>: Optional keyed arguments.
@@ -3493,7 +3613,7 @@ device assignments have not changed.
 
 See `tf.global_variables`. (deprecated)
 
-THIS FUNCTION IS DEPRECATED. It will be removed after 2016-03-02.
+THIS FUNCTION IS DEPRECATED. It will be removed after 2017-03-02.
 Instructions for updating:
 Please use tf.global_variables instead.
 

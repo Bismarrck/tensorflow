@@ -26,7 +26,7 @@ from tensorflow.python.ops import gen_logging_ops
 # pylint: disable=wildcard-import
 from tensorflow.python.ops.gen_logging_ops import *
 # pylint: enable=wildcard-import
-
+from tensorflow.python.util.deprecation import deprecated
 
 # The python wrapper for Assert is in control_flow_ops, as the Assert
 # call relies on certain conditionals for its dependencies.  Use
@@ -71,7 +71,13 @@ def _Collect(val, collections, default_collections):
 
 
 def histogram_summary(tag, values, collections=None, name=None):
+  # pylint: disable=line-too-long
   """Outputs a `Summary` protocol buffer with a histogram.
+
+  This ops is deprecated. Please switch to tf.summary.histogram.
+
+  For an explanation of why this op was deprecated, and information on how to
+  migrate, look ['here'](https://www.tensorflow.org/code/tensorflow/contrib/deprecated/__init__.py)
 
   The generated
   [`Summary`](https://www.tensorflow.org/code/tensorflow/core/framework/summary.proto)
@@ -80,15 +86,15 @@ def histogram_summary(tag, values, collections=None, name=None):
   This op reports an `InvalidArgument` error if any value is not finite.
 
   Args:
-    tag: A `string` `Output`. 0-D.  Tag to use for the summary value.
-    values: A real numeric `Output`. Any shape. Values to use to
+    tag: A `string` `Tensor`. 0-D.  Tag to use for the summary value.
+    values: A real numeric `Tensor`. Any shape. Values to use to
       build the histogram.
     collections: Optional list of graph collections keys. The new summary op is
       added to these collections. Defaults to `[GraphKeys.SUMMARIES]`.
     name: A name for the operation (optional).
 
   Returns:
-    A scalar `Output` of type `string`. The serialized `Summary` protocol
+    A scalar `Tensor` of type `string`. The serialized `Summary` protocol
     buffer.
   """
   with ops.name_scope(name, "HistogramSummary", [tag, values]) as scope:
@@ -98,8 +104,18 @@ def histogram_summary(tag, values, collections=None, name=None):
   return val
 
 
+@deprecated(
+    "2016-11-30", "Please switch to tf.summary.image. Note that "
+    "tf.summary.image uses the node name instead of the tag. "
+    "This means that TensorFlow will automatically de-duplicate summary "
+    "names based on the scope they are created in. Also, the max_images "
+    "argument was renamed to max_outputs.")
 def image_summary(tag, tensor, max_images=3, collections=None, name=None):
+  # pylint: disable=line-too-long
   """Outputs a `Summary` protocol buffer with images.
+
+  For an explanation of why this op was deprecated, and information on how to
+  migrate, look ['here'](https://www.tensorflow.org/code/tensorflow/contrib/deprecated/__init__.py)
 
   The summary has up to `max_images` summary values containing images. The
   images are built from `tensor` which must be 4-D with shape `[batch_size,
@@ -121,7 +137,7 @@ def image_summary(tag, tensor, max_images=3, collections=None, name=None):
      is at 127.  They are then rescaled so that either the smallest value is 0,
      or the largest one is 255.
 
-  The `tag` argument is a scalar `Output` of type `string`.  It is used to
+  The `tag` argument is a scalar `Tensor` of type `string`.  It is used to
   build the `tag` of the summary values:
 
   *  If `max_images` is 1, the summary value tag is '*tag*/image'.
@@ -129,9 +145,9 @@ def image_summary(tag, tensor, max_images=3, collections=None, name=None):
      generated sequentially as '*tag*/image/0', '*tag*/image/1', etc.
 
   Args:
-    tag: A scalar `Output` of type `string`. Used to build the `tag`
+    tag: A scalar `Tensor` of type `string`. Used to build the `tag`
       of the summary values.
-    tensor: A 4-D `uint8` or `float32` `Output` of shape `[batch_size, height,
+    tensor: A 4-D `uint8` or `float32` `Tensor` of shape `[batch_size, height,
       width, channels]` where `channels` is 1, 3, or 4.
     max_images: Max number of batch elements to generate images for.
     collections: Optional list of ops.GraphKeys.  The collections to add the
@@ -139,7 +155,7 @@ def image_summary(tag, tensor, max_images=3, collections=None, name=None):
     name: A name for the operation (optional).
 
   Returns:
-    A scalar `Output` of type `string`. The serialized `Summary` protocol
+    A scalar `Tensor` of type `string`. The serialized `Summary` protocol
     buffer.
   """
   with ops.name_scope(name, "ImageSummary", [tag, tensor]) as scope:
@@ -149,13 +165,23 @@ def image_summary(tag, tensor, max_images=3, collections=None, name=None):
   return val
 
 
+@deprecated(
+    "2016-11-30", "Please switch to tf.summary.audio. Note that "
+    "tf.summary.audio uses the node name instead of the tag. "
+    "This means that TensorFlow will automatically de-duplicate summary "
+    "names based on the scope they are created in.")
 def audio_summary(tag,
                   tensor,
                   sample_rate,
                   max_outputs=3,
                   collections=None,
                   name=None):
+  # pylint: disable=line-too-long
   """Outputs a `Summary` protocol buffer with audio.
+
+  This op is deprecated. Please switch to tf.summary.audio.
+  For an explanation of why this op was deprecated, and information on how to
+  migrate, look ['here'](https://www.tensorflow.org/code/tensorflow/contrib/deprecated/__init__.py)
 
   The summary has up to `max_outputs` summary values containing audio. The
   audio is built from `tensor` which must be 3-D with shape `[batch_size,
@@ -163,7 +189,7 @@ def audio_summary(tag,
   assumed to be in the range of `[-1.0, 1.0]` with a sample rate of
   `sample_rate`.
 
-  The `tag` argument is a scalar `Output` of type `string`.  It is used to
+  The `tag` argument is a scalar `Tensor` of type `string`.  It is used to
   build the `tag` of the summary values:
 
   *  If `max_outputs` is 1, the summary value tag is '*tag*/audio'.
@@ -171,11 +197,11 @@ def audio_summary(tag,
      generated sequentially as '*tag*/audio/0', '*tag*/audio/1', etc.
 
   Args:
-    tag: A scalar `Output` of type `string`. Used to build the `tag`
+    tag: A scalar `Tensor` of type `string`. Used to build the `tag`
       of the summary values.
-    tensor: A 3-D `float32` `Output` of shape `[batch_size, frames, channels]`
-      or a 2-D `float32` `Output` of shape `[batch_size, frames]`.
-    sample_rate: A Scalar `float32` `Output` indicating the sample rate of the
+    tensor: A 3-D `float32` `Tensor` of shape `[batch_size, frames, channels]`
+      or a 2-D `float32` `Tensor` of shape `[batch_size, frames]`.
+    sample_rate: A Scalar `float32` `Tensor` indicating the sample rate of the
       signal in hertz.
     max_outputs: Max number of batch elements to generate audio for.
     collections: Optional list of ops.GraphKeys.  The collections to add the
@@ -183,7 +209,7 @@ def audio_summary(tag,
     name: A name for the operation (optional).
 
   Returns:
-    A scalar `Output` of type `string`. The serialized `Summary` protocol
+    A scalar `Tensor` of type `string`. The serialized `Summary` protocol
     buffer.
   """
   with ops.name_scope(name, "AudioSummary", [tag, tensor]) as scope:
@@ -198,9 +224,13 @@ def audio_summary(tag,
   return val
 
 
+@deprecated("2016-11-30", "Please switch to tf.summary.merge.")
 def merge_summary(inputs, collections=None, name=None):
   # pylint: disable=line-too-long
   """Merges summaries.
+
+  This op is deprecated. Please switch to tf.summary.merge, which has identical
+  behavior.
 
   This op creates a
   [`Summary`](https://www.tensorflow.org/code/tensorflow/core/framework/summary.proto)
@@ -211,14 +241,14 @@ def merge_summary(inputs, collections=None, name=None):
   in the summaries to merge use the same tag.
 
   Args:
-    inputs: A list of `string` `Output` objects containing serialized `Summary`
+    inputs: A list of `string` `Tensor` objects containing serialized `Summary`
       protocol buffers.
     collections: Optional list of graph collections keys. The new summary op is
       added to these collections. Defaults to `[GraphKeys.SUMMARIES]`.
     name: A name for the operation (optional).
 
   Returns:
-    A scalar `Output` of type `string`. The serialized `Summary` protocol
+    A scalar `Tensor` of type `string`. The serialized `Summary` protocol
     buffer resulting from the merging.
   """
   with ops.name_scope(name, "MergeSummary", inputs):
@@ -227,8 +257,12 @@ def merge_summary(inputs, collections=None, name=None):
   return val
 
 
+@deprecated("2016-11-30", "Please switch to tf.summary.merge_all.")
 def merge_all_summaries(key=ops.GraphKeys.SUMMARIES):
   """Merges all summaries collected in the default graph.
+
+  This op is deprecated. Please switch to tf.summary.merge_all, which has
+  identical behavior.
 
   Args:
     key: `GraphKey` used to collect the summaries.  Defaults to
@@ -236,7 +270,7 @@ def merge_all_summaries(key=ops.GraphKeys.SUMMARIES):
 
   Returns:
     If no summaries were collected, returns None.  Otherwise returns a scalar
-    `Output` of type `string` containing the serialized `Summary` protocol
+    `Tensor` of type `string` containing the serialized `Summary` protocol
     buffer resulting from the merging.
   """
   summary_ops = ops.get_collection(key)
@@ -254,7 +288,7 @@ def get_summary_op():
 
   Returns:
     If no summaries were collected, returns None. Otherwise returns a scalar
-    `Output` of type `string` containing the serialized `Summary` protocol
+    `Tensor` of type `string` containing the serialized `Summary` protocol
     buffer resulting from the merging.
   """
   summary_op = ops.get_collection(ops.GraphKeys.SUMMARY_OP)
@@ -271,20 +305,25 @@ def get_summary_op():
 
 
 def scalar_summary(tags, values, collections=None, name=None):
+  # pylint: disable=line-too-long
   """Outputs a `Summary` protocol buffer with scalar values.
+
+  This ops is deprecated. Please switch to tf.summary.scalar.
+  For an explanation of why this op was deprecated, and information on how to
+  migrate, look ['here'](https://www.tensorflow.org/code/tensorflow/contrib/deprecated/__init__.py)
 
   The input `tags` and `values` must have the same shape.  The generated
   summary has a summary value for each tag-value pair in `tags` and `values`.
 
   Args:
-    tags: A `string` `Output`.  Tags for the summaries.
+    tags: A `string` `Tensor`.  Tags for the summaries.
     values: A real numeric Tensor.  Values for the summaries.
     collections: Optional list of graph collections keys. The new summary op is
       added to these collections. Defaults to `[GraphKeys.SUMMARIES]`.
     name: A name for the operation (optional).
 
   Returns:
-    A scalar `Output` of type `string`. The serialized `Summary` protocol
+    A scalar `Tensor` of type `string`. The serialized `Summary` protocol
     buffer.
   """
   with ops.name_scope(name, "ScalarSummary", [tags, values]) as scope:

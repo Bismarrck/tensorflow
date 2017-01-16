@@ -152,10 +152,10 @@ string TypeListString(const AttrValue& value) {
 
 string SingleTensorName(DataType dtype, bool is_ref) {
   const string type_str = TypeString(dtype, is_ref);
-  return strings::StrCat("An `Output` of type ", type_str, ".");
+  return strings::StrCat("A `Tensor` of type ", type_str, ".");
 }
 
-const char kUnknownTensorType[] = {"An `Output`."};
+const char kUnknownTensorType[] = {"A `Tensor`."};
 
 string ArgTypeName(const OpDef& op_def, const OpDef::ArgDef& arg,
                    const std::unordered_map<string, string>& inferred_attrs,
@@ -176,12 +176,12 @@ string ArgTypeName(const OpDef& op_def, const OpDef::ArgDef& arg,
       }
     } else {
       prefix = strings::StrCat(
-          "A list with the same number of `Output` objects as `",
+          "A list with the same number of `Tensor` objects as `",
           AvoidPythonReserved(*original_arg), "` of");
     }
 
     if (arg.type() != DT_INVALID) {
-      return strings::StrCat(prefix, " `Output` objects of type ",
+      return strings::StrCat(prefix, " `Tensor` objects of type ",
                              TypeString(arg.type(), arg.is_ref()), ".");
     } else {
       original_arg = gtl::FindOrNull(inferred_attrs, arg.type_attr());
@@ -189,19 +189,19 @@ string ArgTypeName(const OpDef& op_def, const OpDef::ArgDef& arg,
         strings::StrAppend(&prefix, " mutable");
       }
       if (original_arg == nullptr) {
-        return strings::StrCat(prefix, " `Output` objects of type ",
+        return strings::StrCat(prefix, " `Tensor` objects of type ",
                                arg.type_attr(), ".");
       } else if (*original_arg == arg.name()) {
         const OpDef::AttrDef* attr = FindAttr(arg.type_attr(), op_def);
         if (attr->has_allowed_values()) {
           return strings::StrCat(prefix,
-                                 " `Output` objects of the same type in: ",
+                                 " `Tensor` objects of the same type in: ",
                                  TypeListString(attr->allowed_values()), ".");
         } else {
-          return strings::StrCat(prefix, " `Output` objects of the same type.");
+          return strings::StrCat(prefix, " `Tensor` objects of the same type.");
         }
       } else {
-        return strings::StrCat(prefix, " `Output` objects of the same type as ",
+        return strings::StrCat(prefix, " `Tensor` objects of the same type as ",
                                AvoidPythonReserved(*original_arg), ".");
       }
     }
@@ -211,8 +211,8 @@ string ArgTypeName(const OpDef& op_def, const OpDef::ArgDef& arg,
     const OpDef::AttrDef* attr = FindAttr(attr_name, op_def);
     const string mutable_str = arg.is_ref() ? "mutable " : "";
     const string prefix =
-        is_list ? strings::StrCat("A list of ", mutable_str, "`Output` objects")
-                : strings::StrCat("A ", mutable_str, "`Output`");
+        is_list ? strings::StrCat("A list of ", mutable_str, "`Tensor` objects")
+                : strings::StrCat("A ", mutable_str, "`Tensor`");
     const string* original_arg = gtl::FindOrNull(inferred_attrs, attr_name);
     if (original_arg == nullptr) {
       return strings::StrCat(prefix, " of type `", attr_name, "`.");
@@ -267,7 +267,7 @@ static string GetReturns(const OpDef& op_def,
             desc = op_def.output_arg(0).description();
           } else if (!op_def.output_arg(0).name().empty()) {
             desc = strings::StrCat(" The ", op_def.output_arg(0).name(),
-                                   " `Output`.");
+                                   " `Tensor`.");
           }
         } else if (!description.empty()) {
           AppendWithinWidth(&desc, description, kRightMargin - 4 /* indent */);
@@ -283,7 +283,7 @@ static string GetReturns(const OpDef& op_def,
           out_names[i] = strings::StrCat("output", i);
         }
       }
-      strings::Appendf(&result, "    A tuple of `Output` objects (%s).\n",
+      strings::Appendf(&result, "    A tuple of `Tensor` objects (%s).\n",
                        str_util::Join(out_names, ", ").c_str());
       for (int i = 0; i < num_outs; ++i) {
         string desc = strings::StrCat(out_names[i], ": ");
@@ -482,8 +482,8 @@ static string GetPythonOp(const OpDef& op_def, bool is_hidden, string op_name) {
 
   // Prepare a NamedTuple type to hold the outputs, if there are multiple
   if (num_outs > 1) {
-    const string tuple_type_prefix =
-        strings::StrCat("_", op_def.name(), "Output = collections.namedtuple(");
+    const string tuple_type_prefix = strings::StrCat(
+        "_", op_def.name(), "Output = _collections.namedtuple(");
     const string tuple_type_suffix = strings::StrCat(
         "\"", op_def.name(), "\", ", lower_op_name_outputs, ")");
     strings::Appendf(
@@ -656,18 +656,18 @@ string GetPythonOps(const OpList& ops, const std::vector<string>& hidden_ops,
 This file is MACHINE GENERATED! Do not edit.
 """
 
-import collections
+import collections as _collections
 
-from google.protobuf import text_format
+from google.protobuf import text_format as _text_format
 
-from tensorflow.core.framework import op_def_pb2
+from tensorflow.core.framework import op_def_pb2 as _op_def_pb2
 
 # Needed to trigger the call to _set_call_cpp_shape_fn.
-from tensorflow.python.framework import common_shapes
+from tensorflow.python.framework import common_shapes as _common_shapes
 
-from tensorflow.python.framework import op_def_registry
-from tensorflow.python.framework import ops
-from tensorflow.python.framework import op_def_library
+from tensorflow.python.framework import op_def_registry as _op_def_registry
+from tensorflow.python.framework import ops as _ops
+from tensorflow.python.framework import op_def_library as _op_def_library
 )");
 
   // We'll make a copy of ops that filters out descriptions.
@@ -699,7 +699,7 @@ from tensorflow.python.framework import op_def_library
                        GetPythonOp(op_def, is_hidden, lower_case_name));
 
     if (!require_shapes) {
-      strings::Appendf(&result, "ops.RegisterShape(\"%s\")(None)\n",
+      strings::Appendf(&result, "_ops.RegisterShape(\"%s\")(None)\n",
                        op_def.name().c_str());
     }
 
@@ -709,10 +709,10 @@ from tensorflow.python.framework import op_def_library
   }
 
   strings::Appendf(&result, R"(def _InitOpDefLibrary():
-  op_list = op_def_pb2.OpList()
-  text_format.Merge(_InitOpDefLibrary.op_list_ascii, op_list)
-  op_def_registry.register_op_list(op_list)
-  op_def_lib = op_def_library.OpDefLibrary()
+  op_list = _op_def_pb2.OpList()
+  _text_format.Merge(_InitOpDefLibrary.op_list_ascii, op_list)
+  _op_def_registry.register_op_list(op_list)
+  op_def_lib = _op_def_library.OpDefLibrary()
   op_def_lib.add_op_list(op_list)
   return op_def_lib
 

@@ -20,9 +20,13 @@ from __future__ import print_function
 
 import collections
 
-import tensorflow as tf
-
 from tensorflow.contrib.solvers.python.ops import util
+from tensorflow.python.framework import constant_op
+from tensorflow.python.framework import dtypes
+from tensorflow.python.framework import ops
+from tensorflow.python.ops import array_ops
+from tensorflow.python.ops import control_flow_ops
+from tensorflow.python.ops import math_ops
 
 
 def conjugate_gradient(operator,
@@ -41,7 +45,7 @@ def conjugate_gradient(operator,
 
   Args:
     operator: An object representing a linear operator with attributes:
-      - shape: Either a list of integers or a 1-D `Output` of type `int32` of
+      - shape: Either a list of integers or a 1-D `Tensor` of type `int32` of
         length 2. `shape[0]` is the dimension on the domain of the operator,
         `shape[1]` is the dimension of the co-domain of the operator. On other
         words, if operator represents an N x N matrix A, `shape` must contain
@@ -50,24 +54,24 @@ def conjugate_gradient(operator,
       - apply: Callable object taking a vector `x` as input and returning a
         vector with the result of applying the operator to `x`, i.e. if
        `operator` represents matrix `A`, `apply` should return `A * x`.
-    rhs: A rank-1 `Output` of shape `[N]` containing the right-hand size vector.
+    rhs: A rank-1 `Tensor` of shape `[N]` containing the right-hand size vector.
     tol: A float scalar convergence tolerance.
     max_iter: An integer giving the maximum number of iterations.
     name: A name scope for the operation.
 
   Returns:
     output: A namedtuple representing the final state with fields:
-      - i: A scalar `int32` `Output`. Number of iterations executed.
-      - x: A rank-1 `Output` of shape `[N]` containing the computed solution.
-      - r: A rank-1 `Output` of shape `[M]` containing the residual vector.
-      - p: A rank-1 `Output` of shape `[N]`. `A`-conjugate basis vector.
+      - i: A scalar `int32` `Tensor`. Number of iterations executed.
+      - x: A rank-1 `Tensor` of shape `[N]` containing the computed solution.
+      - r: A rank-1 `Tensor` of shape `[M]` containing the residual vector.
+      - p: A rank-1 `Tensor` of shape `[N]`. `A`-conjugate basis vector.
       - gamma: \\(||r||_2^2\\)
   """
   # ephemeral class holding CG state.
   cg_state = collections.namedtuple("CGState", ["i", "x", "r", "p", "gamma"])
 
   def stopping_criterion(i, state):
-    return tf.logical_and(i < max_iter, state.gamma > tol)
+    return math_ops.logical_and(i < max_iter, state.gamma > tol)
 
   # TODO(rmlarsen): add preconditioning
   def cg_step(i, state):
@@ -80,18 +84,21 @@ def conjugate_gradient(operator,
     p = r + beta * state.p
     return i + 1, cg_state(i + 1, x, r, p, gamma)
 
-  with tf.name_scope(name):
+  with ops.name_scope(name):
     n = operator.shape[1:]
-    rhs = tf.expand_dims(rhs, -1)
+    rhs = array_ops.expand_dims(rhs, -1)
     gamma0 = util.l2norm_squared(rhs)
     tol = tol * tol * gamma0
-    x = tf.expand_dims(tf.zeros(n, dtype=rhs.dtype.base_dtype), -1)
-    i = tf.constant(0, dtype=tf.int32)
+    x = array_ops.expand_dims(
+        array_ops.zeros(
+            n, dtype=rhs.dtype.base_dtype), -1)
+    i = constant_op.constant(0, dtype=dtypes.int32)
     state = cg_state(i=i, x=x, r=rhs, p=rhs, gamma=gamma0)
-    _, state = tf.while_loop(stopping_criterion, cg_step, [i, state])
+    _, state = control_flow_ops.while_loop(stopping_criterion, cg_step,
+                                           [i, state])
     return cg_state(
         state.i,
-        x=tf.squeeze(state.x),
-        r=tf.squeeze(state.r),
-        p=tf.squeeze(state.p),
+        x=array_ops.squeeze(state.x),
+        r=array_ops.squeeze(state.r),
+        p=array_ops.squeeze(state.p),
         gamma=state.gamma)

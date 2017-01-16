@@ -40,7 +40,7 @@ def l1_regularizer(scale, scope=None):
   L1 regularization encourages sparsity.
 
   Args:
-    scale: A scalar multiplier `Output`. 0.0 disables the regularizer.
+    scale: A scalar multiplier `Tensor`. 0.0 disables the regularizer.
     scope: An optional scope name.
 
   Returns:
@@ -65,7 +65,7 @@ def l1_regularizer(scale, scope=None):
       my_scale = ops.convert_to_tensor(scale,
                                        dtype=weights.dtype.base_dtype,
                                        name='scale')
-      return standard_ops.mul(
+      return standard_ops.multiply(
           my_scale,
           standard_ops.reduce_sum(standard_ops.abs(weights)),
           name=name)
@@ -79,7 +79,7 @@ def l2_regularizer(scale, scope=None):
   Small values of L2 can help prevent overfitting the training data.
 
   Args:
-    scale: A scalar multiplier `Output`. 0.0 disables the regularizer.
+    scale: A scalar multiplier `Tensor`. 0.0 disables the regularizer.
     scope: An optional scope name.
 
   Returns:
@@ -104,7 +104,7 @@ def l2_regularizer(scale, scope=None):
       my_scale = ops.convert_to_tensor(scale,
                                        dtype=weights.dtype.base_dtype,
                                        name='scale')
-      return standard_ops.mul(my_scale, nn.l2_loss(weights), name=name)
+      return standard_ops.multiply(my_scale, nn.l2_loss(weights), name=name)
 
   return l2
 
@@ -113,8 +113,8 @@ def l1_l2_regularizer(scale_l1=1.0, scale_l2=1.0, scope=None):
   """Returns a function that can be used to apply L1 L2 regularizations.
 
   Args:
-    scale_l1: A scalar multiplier `Output` for L1 regularization.
-    scale_l2: A scalar multiplier `Output` for L2 regularization.
+    scale_l1: A scalar multiplier `Tensor` for L1 regularization.
+    scale_l2: A scalar multiplier `Tensor` for L2 regularization.
     scope: An optional scope name.
 
   Returns:
@@ -163,9 +163,9 @@ def apply_regularization(regularizer, weights_list=None):
   subtraction, it usually shouldn't hurt much either.
 
   Args:
-    regularizer: A function that takes a single `Output` argument and returns
-      a scalar `Output` output.
-    weights_list: List of weights `Output`s or `Variables` to apply
+    regularizer: A function that takes a single `Tensor` argument and returns
+      a scalar `Tensor` output.
+    weights_list: List of weights `Tensors` or `Variables` to apply
       `regularizer` over. Defaults to the `GraphKeys.WEIGHTS` collection if
       `None`.
 

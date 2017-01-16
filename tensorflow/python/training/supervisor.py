@@ -23,7 +23,6 @@ import time
 
 from tensorflow.core.framework.summary_pb2 import Summary
 from tensorflow.core.util.event_pb2 import SessionLog
-from tensorflow.python import summary as _summary
 from tensorflow.python.framework import dtypes
 from tensorflow.python.framework import meta_graph
 from tensorflow.python.framework import ops
@@ -31,10 +30,10 @@ from tensorflow.python.ops import control_flow_ops
 from tensorflow.python.ops import data_flow_ops
 from tensorflow.python.ops import variables
 from tensorflow.python.platform import tf_logging as logging
+from tensorflow.python.summary import summary as _summary
 from tensorflow.python.training import coordinator
 from tensorflow.python.training import saver as saver_mod
 from tensorflow.python.training import session_manager as session_manager_mod
-from tensorflow.python.training import summary_io
 from tensorflow.python.training import training_util
 
 
@@ -132,7 +131,7 @@ class Supervisor(object):
     details.
 
   * Specifying `'grpc://hostname:port'` requests a session that uses
-    the RPC interface to a specific , and also allows the in-process
+    the RPC interface to a specific host, and also allows the in-process
     master to access remote tensorflow workers. Often, it is
     appropriate to pass `server.target` (for some `tf.train.Server`
     named `server).
@@ -152,7 +151,7 @@ class Supervisor(object):
     ...
     sv = Supervisor(logdir='/tmp/mydir')
     with sv.managed_session(FLAGS.master) as sess:
-      sv.loop(60, print_loss, (sess))
+      sv.loop(60, print_loss, (sess, ))
       while not sv.should_stop():
         sess.run(my_train_op)
     ```
@@ -238,18 +237,18 @@ class Supervisor(object):
         default `Graph`.  The supervisor may add operations to the graph before
         creating a session, but the graph should not be modified by the caller
         after passing it to the supervisor.
-      ready_op: 1-D string `Output`.  This tensor is evaluated by supervisors in
+      ready_op: 1-D string `Tensor`.  This tensor is evaluated by supervisors in
         `prepare_or_wait_for_session()` to check if the model is ready to use.
         The model is considered ready if it returns an empty array.  Defaults to
         the tensor returned from `tf.report_uninitialized_variables()`  If
         `None`, the model is not checked for readiness.
-      ready_for_local_init_op: 1-D string `Output`.  This tensor is evaluated by
+      ready_for_local_init_op: 1-D string `Tensor`.  This tensor is evaluated by
         supervisors in `prepare_or_wait_for_session()` to check if the model is
         ready to run the local_init_op.
         The model is considered ready if it returns an empty array.  Defaults to
         the tensor returned from
-        `tf.report_uninitialized_variables(tf.all_variables())`. If `None`, the
-        model is not checked for readiness before running local_init_op.
+        `tf.report_uninitialized_variables(tf.global_variables())`. If `None`,
+        the model is not checked for readiness before running local_init_op.
       is_chief: If True, create a chief supervisor in charge of initializing
         and restoring the model.  If False, create a supervisor that relies
         on a chief supervisor for inits and restore.
@@ -257,7 +256,7 @@ class Supervisor(object):
         when it can not be recovered.  Defaults to an `Operation` that
         initializes all variables.  If `None`, no initialization is done
         automatically unless you pass a value for `init_fn`, see below.
-      init_feed_dict: A dictionary that maps `Output` objects to feed values.
+      init_feed_dict: A dictionary that maps `Tensor` objects to feed values.
         This feed dictionary will be used when `init_op` is evaluated.
       local_init_op: `Operation`. Used by all supervisors to run initializations
         that should run for every new supervisor instance. By default these
@@ -341,7 +340,7 @@ class Supervisor(object):
         self._save_path = os.path.join(self._logdir, checkpoint_basename)
       if summary_writer is Supervisor.USE_DEFAULT:
         if self._logdir:
-          self._summary_writer = summary_io.SummaryWriter(self._logdir)
+          self._summary_writer = _summary.FileWriter(self._logdir)
       else:
         self._summary_writer = summary_writer
       self._graph_added_to_summary = False
@@ -389,10 +388,10 @@ class Supervisor(object):
     """Initializes ready_op.
 
     Args:
-      ready_op: `Output` to check if the model is initialized.
+      ready_op: `Tensor` to check if the model is initialized.
         If it's set to USE_DEFAULT, creates an op that checks all
         the variables are initialized.
-      ready_for_local_init_op: `Output` to check if the model is ready to run
+      ready_for_local_init_op: `Tensor` to check if the model is ready to run
         local_init_op.
         If it's set to USE_DEFAULT, creates an op that checks all
         the global variables are initialized.
@@ -416,7 +415,7 @@ class Supervisor(object):
     Args:
       init_op: `Operation` to initialize the variables. If set to USE_DEFAULT,
         create an op that initializes all variables and tables.
-      init_feed_dict: A dictionary that maps `Output` objects to feed values.
+      init_feed_dict: A dictionary that maps `Tensor` objects to feed values.
         This feed dictionary will be used when `init_op` is evaluated.
     """
     if init_op is Supervisor.USE_DEFAULT:
@@ -868,7 +867,7 @@ class Supervisor(object):
     """Returns the global_step from the default graph.
 
     Returns:
-      The global step `Output` or `None`.
+      The global step `Tensor` or `None`.
     """
     try:
       gs = ops.get_default_graph().get_tensor_by_name("global_step:0")
@@ -890,7 +889,7 @@ class Supervisor(object):
     # In that case all Variables must have their device set.
     if not self._is_chief:
       for op in self._graph.get_operations():
-        if op.type == "Variable" and not op.device:
+        if op.type in ["Variable", "VariableV2"] and not op.device:
           raise ValueError("When using replicas, all Variables must have "
                            "their device set: %s" % op)
 

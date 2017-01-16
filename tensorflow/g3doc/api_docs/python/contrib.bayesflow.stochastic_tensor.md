@@ -56,11 +56,11 @@ constant with respect to the input for purposes of the gradient.
 ##### Args:
 
 
-*  <b>`sample_loss`</b>: `Output`, sample loss downstream of this `StochasticTensor`.
+*  <b>`sample_loss`</b>: `Tensor`, sample loss downstream of this `StochasticTensor`.
 
 ##### Returns:
 
-  Either `None` or an `Output`.
+  Either `None` or a `Tensor`.
 
 
 - - -
@@ -117,7 +117,7 @@ reparameterized distributions; it will also return None if the value type is
       value type set with the `value_type` context manager will be used.
 *  <b>`loss_fn`</b>: callable that takes
       `(st, st.value(), influenced_loss)`, where
-      `st` is this `StochasticTensor`, and returns an `Output` loss. By
+      `st` is this `StochasticTensor`, and returns a `Tensor` loss. By
       default, `loss_fn` is the `score_function`, or more precisely, the
       integral of the score function, such that when the gradient is taken,
       the score function results. See the `stochastic_gradient_estimators`
@@ -254,7 +254,7 @@ mu = tf.zeros((2,3))
 sigma = tf.ones((2, 3))
 with sg.value_type(sg.SampleValue()):
   st = sg.StochasticTensor(
-    distributions.Normal, mu=mu, sigma=sigma)
+    tf.contrib.distributions.Normal, mu=mu, sigma=sigma)
 # draws 1 sample and does not reshape
 assertEqual(st.value().get_shape(), (2, 3))
 ```
@@ -264,7 +264,7 @@ mu = tf.zeros((2,3))
 sigma = tf.ones((2, 3))
 with sg.value_type(sg.SampleValue(4)):
   st = sg.StochasticTensor(
-    distributions.Normal, mu=mu, sigma=sigma)
+    tf.contrib.distributions.Normal, mu=mu, sigma=sigma)
 # draws 4 samples each with shape (2, 3) and concatenates
 assertEqual(st.value().get_shape(), (4, 2, 3))
 ```
@@ -334,7 +334,8 @@ Typical usage:
 
 ```
 with sg.value_type(sg.MeanValue(stop_gradients=True)):
-  st = sg.StochasticTensor(distributions.Normal, mu=mu, sigma=sigma)
+  st = sg.StochasticTensor(tf.contrib.distributions.Normal, mu=mu,
+                           sigma=sigma)
 ```
 
 In the example above, `st.value()` (or equivalently, `tf.identity(st)`) will

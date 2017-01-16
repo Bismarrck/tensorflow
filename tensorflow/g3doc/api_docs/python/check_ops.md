@@ -18,19 +18,13 @@ with tf.control_dependencies([tf.assert_negative(x)]):
   output = tf.reduce_sum(x)
 ```
 
-Example of adding dependency to the tensor being checked:
-
-```python
-x = tf.with_dependencies([tf.assert_negative(x)], x)
-```
-
 Negative means, for every element `x[i]` of `x`, we have `x[i] < 0`.
 If `x` is empty this is trivially satisfied.
 
 ##### Args:
 
 
-*  <b>`x`</b>: Numeric `Output`.
+*  <b>`x`</b>: Numeric `Tensor`.
 *  <b>`data`</b>: The tensors to print out if the condition is False.  Defaults to
     error message and first few entries of `x`.
 *  <b>`summarize`</b>: Print this many entries of each tensor.
@@ -55,19 +49,13 @@ with tf.control_dependencies([tf.assert_positive(x)]):
   output = tf.reduce_sum(x)
 ```
 
-Example of adding dependency to the tensor being checked:
-
-```python
-x = tf.with_dependencies([tf.assert_positive(x)], x)
-```
-
 Positive means, for every element `x[i]` of `x`, we have `x[i] > 0`.
 If `x` is empty this is trivially satisfied.
 
 ##### Args:
 
 
-*  <b>`x`</b>: Numeric `Output`.
+*  <b>`x`</b>: Numeric `Tensor`.
 *  <b>`data`</b>: The tensors to print out if the condition is False.  Defaults to
     error message and first few entries of `x`.
 *  <b>`summarize`</b>: Print this many entries of each tensor.
@@ -85,8 +73,8 @@ If `x` is empty this is trivially satisfied.
 
 Static assert that values is a "proper" iterable.
 
-`Ops` that expect iterables of `Output` can call this to validate input.
-Useful since `Output`, `ndarray`, byte/text type are all iterables themselves.
+`Ops` that expect iterables of `Tensor` can call this to validate input.
+Useful since `Tensor`, `ndarray`, byte/text type are all iterables themselves.
 
 ##### Args:
 
@@ -97,7 +85,7 @@ Useful since `Output`, `ndarray`, byte/text type are all iterables themselves.
 
 
 *  <b>`TypeError`</b>: If `values` is not iterable or is one of
-    `Output`, `SparseTensor`, `np.array`, `tf.compat.bytes_or_text_types`.
+    `Tensor`, `SparseTensor`, `np.array`, `tf.compat.bytes_or_text_types`.
 
 
 - - -
@@ -113,19 +101,13 @@ with tf.control_dependencies([tf.assert_non_negative(x)]):
   output = tf.reduce_sum(x)
 ```
 
-Example of adding dependency to the tensor being checked:
-
-```python
-x = tf.with_dependencies([tf.assert_non_negative(x)], x)
-```
-
 Non-negative means, for every element `x[i]` of `x`, we have `x[i] >= 0`.
 If `x` is empty this is trivially satisfied.
 
 ##### Args:
 
 
-*  <b>`x`</b>: Numeric `Output`.
+*  <b>`x`</b>: Numeric `Tensor`.
 *  <b>`data`</b>: The tensors to print out if the condition is False.  Defaults to
     error message and first few entries of `x`.
 *  <b>`summarize`</b>: Print this many entries of each tensor.
@@ -151,19 +133,13 @@ with tf.control_dependencies([tf.assert_non_positive(x)]):
   output = tf.reduce_sum(x)
 ```
 
-Example of adding dependency to the tensor being checked:
-
-```python
-x = tf.with_dependencies([tf.assert_non_positive(x)], x)
-```
-
 Non-positive means, for every element `x[i]` of `x`, we have `x[i] <= 0`.
 If `x` is empty this is trivially satisfied.
 
 ##### Args:
 
 
-*  <b>`x`</b>: Numeric `Output`.
+*  <b>`x`</b>: Numeric `Tensor`.
 *  <b>`data`</b>: The tensors to print out if the condition is False.  Defaults to
     error message and first few entries of `x`.
 *  <b>`summarize`</b>: Print this many entries of each tensor.
@@ -189,12 +165,6 @@ with tf.control_dependencies([tf.assert_equal(x, y)]):
   output = tf.reduce_sum(x)
 ```
 
-Example of adding dependency to the tensor being checked:
-
-```python
-x = tf.with_dependencies([tf.assert_equal(x, y)], x)
-```
-
 This condition holds if for every pair of (possibly broadcast) elements
 `x[i]`, `y[i]`, we have `x[i] == y[i]`.
 If both `x` and `y` are empty, this is trivially satisfied.
@@ -202,8 +172,8 @@ If both `x` and `y` are empty, this is trivially satisfied.
 ##### Args:
 
 
-*  <b>`x`</b>: Numeric `Output`.
-*  <b>`y`</b>: Numeric `Output`, same dtype as and broadcastable to `x`.
+*  <b>`x`</b>: Numeric `Tensor`.
+*  <b>`y`</b>: Numeric `Tensor`, same dtype as and broadcastable to `x`.
 *  <b>`data`</b>: The tensors to print out if the condition is False.  Defaults to
     error message and first few entries of `x`, `y`.
 *  <b>`summarize`</b>: Print this many entries of each tensor.
@@ -228,16 +198,10 @@ with tf.control_dependencies([tf.assert_integer(x)]):
   output = tf.reduce_sum(x)
 ```
 
-Example of adding dependency to the tensor being checked:
-
-```python
-x = tf.with_dependencies([tf.assert_integer(x)], x)
-```
-
 ##### Args:
 
 
-*  <b>`x`</b>: `Output` whose basetype is integer and is not quantized.
+*  <b>`x`</b>: `Tensor` whose basetype is integer and is not quantized.
 *  <b>`message`</b>: A string to prefix to the default message.
 *  <b>`name`</b>: A name for this operation (optional).  Defaults to "assert_integer".
 
@@ -264,12 +228,6 @@ with tf.control_dependencies([tf.assert_less(x, y)]):
   output = tf.reduce_sum(x)
 ```
 
-Example of adding dependency to the tensor being checked:
-
-```python
-x = tf.with_dependencies([tf.assert_less(x, y)], x)
-```
-
 This condition holds if for every pair of (possibly broadcast) elements
 `x[i]`, `y[i]`, we have `x[i] < y[i]`.
 If both `x` and `y` are empty, this is trivially satisfied.
@@ -277,8 +235,8 @@ If both `x` and `y` are empty, this is trivially satisfied.
 ##### Args:
 
 
-*  <b>`x`</b>: Numeric `Output`.
-*  <b>`y`</b>: Numeric `Output`, same dtype as and broadcastable to `x`.
+*  <b>`x`</b>: Numeric `Tensor`.
+*  <b>`y`</b>: Numeric `Tensor`, same dtype as and broadcastable to `x`.
 *  <b>`data`</b>: The tensors to print out if the condition is False.  Defaults to
     error message and first few entries of `x`, `y`.
 *  <b>`summarize`</b>: Print this many entries of each tensor.
@@ -303,12 +261,6 @@ with tf.control_dependencies([tf.assert_less_equal(x, y)]):
   output = tf.reduce_sum(x)
 ```
 
-Example of adding dependency to the tensor being checked:
-
-```python
-x = tf.with_dependencies([tf.assert_less_equal(x, y)], x)
-```
-
 This condition holds if for every pair of (possibly broadcast) elements
 `x[i]`, `y[i]`, we have `x[i] <= y[i]`.
 If both `x` and `y` are empty, this is trivially satisfied.
@@ -316,8 +268,8 @@ If both `x` and `y` are empty, this is trivially satisfied.
 ##### Args:
 
 
-*  <b>`x`</b>: Numeric `Output`.
-*  <b>`y`</b>: Numeric `Output`, same dtype as and broadcastable to `x`.
+*  <b>`x`</b>: Numeric `Tensor`.
+*  <b>`y`</b>: Numeric `Tensor`, same dtype as and broadcastable to `x`.
 *  <b>`data`</b>: The tensors to print out if the condition is False.  Defaults to
     error message and first few entries of `x`, `y`.
 *  <b>`summarize`</b>: Print this many entries of each tensor.
@@ -342,12 +294,6 @@ with tf.control_dependencies([tf.assert_greater(x, y)]):
   output = tf.reduce_sum(x)
 ```
 
-Example of adding dependency to the tensor being checked:
-
-```python
-x = tf.with_dependencies([tf.assert_greater(x, y)], x)
-```
-
 This condition holds if for every pair of (possibly broadcast) elements
 `x[i]`, `y[i]`, we have `x[i] > y[i]`.
 If both `x` and `y` are empty, this is trivially satisfied.
@@ -355,8 +301,8 @@ If both `x` and `y` are empty, this is trivially satisfied.
 ##### Args:
 
 
-*  <b>`x`</b>: Numeric `Output`.
-*  <b>`y`</b>: Numeric `Output`, same dtype as and broadcastable to `x`.
+*  <b>`x`</b>: Numeric `Tensor`.
+*  <b>`y`</b>: Numeric `Tensor`, same dtype as and broadcastable to `x`.
 *  <b>`data`</b>: The tensors to print out if the condition is False.  Defaults to
     error message and first few entries of `x`, `y`.
 *  <b>`summarize`</b>: Print this many entries of each tensor.
@@ -381,12 +327,6 @@ with tf.control_dependencies([tf.assert_greater_equal(x, y)]):
   output = tf.reduce_sum(x)
 ```
 
-Example of adding dependency to the tensor being checked:
-
-```python
-x = tf.with_dependencies([tf.assert_greater_equal(x, y)], x)
-```
-
 This condition holds if for every pair of (possibly broadcast) elements
 `x[i]`, `y[i]`, we have `x[i] >= y[i]`.
 If both `x` and `y` are empty, this is trivially satisfied.
@@ -394,8 +334,8 @@ If both `x` and `y` are empty, this is trivially satisfied.
 ##### Args:
 
 
-*  <b>`x`</b>: Numeric `Output`.
-*  <b>`y`</b>: Numeric `Output`, same dtype as and broadcastable to `x`.
+*  <b>`x`</b>: Numeric `Tensor`.
+*  <b>`y`</b>: Numeric `Tensor`, same dtype as and broadcastable to `x`.
 *  <b>`data`</b>: The tensors to print out if the condition is False.  Defaults to
     error message and first few entries of `x`, `y`.
 *  <b>`summarize`</b>: Print this many entries of each tensor.
@@ -421,17 +361,11 @@ with tf.control_dependencies([tf.assert_rank(x, 2)]):
   output = tf.reduce_sum(x)
 ```
 
-Example of adding dependency to the tensor being checked:
-
-```python
-x = tf.with_dependencies([tf.assert_rank(x, 2)], x)
-```
-
 ##### Args:
 
 
-*  <b>`x`</b>: Numeric `Output`.
-*  <b>`rank`</b>: Scalar integer `Output`.
+*  <b>`x`</b>: Numeric `Tensor`.
+*  <b>`rank`</b>: Scalar integer `Tensor`.
 *  <b>`data`</b>: The tensors to print out if the condition is False.  Defaults to
     error message and first few entries of `x`.
 *  <b>`summarize`</b>: Print this many entries of each tensor.
@@ -462,17 +396,11 @@ with tf.control_dependencies([tf.assert_rank_at_least(x, 2)]):
   output = tf.reduce_sum(x)
 ```
 
-Example of adding dependency to the tensor being checked:
-
-```python
-x = tf.with_dependencies([tf.assert_rank_at_least(x, 2)], x)
-```
-
 ##### Args:
 
 
-*  <b>`x`</b>: Numeric `Output`.
-*  <b>`rank`</b>: Scalar `Output`.
+*  <b>`x`</b>: Numeric `Tensor`.
+*  <b>`rank`</b>: Scalar `Tensor`.
 *  <b>`data`</b>: The tensors to print out if the condition is False.  Defaults to
     error message and first few entries of `x`.
 *  <b>`summarize`</b>: Print this many entries of each tensor.
@@ -495,12 +423,12 @@ x = tf.with_dependencies([tf.assert_rank_at_least(x, 2)], x)
 
 ### `tf.assert_type(tensor, tf_type, message=None, name=None)` {#assert_type}
 
-Statically asserts that the given `Output` is of the specified type.
+Statically asserts that the given `Tensor` is of the specified type.
 
 ##### Args:
 
 
-*  <b>`tensor`</b>: A tensorflow `Output`.
+*  <b>`tensor`</b>: A tensorflow `Tensor`.
 *  <b>`tf_type`</b>: A tensorflow type (`dtypes.float32`, `tf.int64`, `dtypes.bool`,
     etc).
 *  <b>`message`</b>: A string to prefix to the default message.
@@ -531,12 +459,12 @@ See also:  `is_strictly_increasing`
 ##### Args:
 
 
-*  <b>`x`</b>: Numeric `Output`.
+*  <b>`x`</b>: Numeric `Tensor`.
 *  <b>`name`</b>: A name for this operation (optional).  Defaults to "is_non_decreasing"
 
 ##### Returns:
 
-  Boolean `Output`, equal to `True` iff `x` is non-decreasing.
+  Boolean `Tensor`, equal to `True` iff `x` is non-decreasing.
 
 ##### Raises:
 
@@ -566,13 +494,13 @@ See also:  `is_non_decreasing`
 ##### Args:
 
 
-*  <b>`x`</b>: Numeric `Output`.
+*  <b>`x`</b>: Numeric `Tensor`.
 *  <b>`name`</b>: A name for this operation (optional).
     Defaults to "is_strictly_increasing"
 
 ##### Returns:
 
-  Boolean `Output`, equal to `True` iff `x` is strictly increasing.
+  Boolean `Tensor`, equal to `True` iff `x` is strictly increasing.
 
 ##### Raises:
 

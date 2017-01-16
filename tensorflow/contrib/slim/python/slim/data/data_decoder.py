@@ -4,7 +4,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-# http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -54,8 +54,8 @@ class DataDecoder(object):
       items: A list of strings, each of which indicate a particular data type.
 
     Returns:
-      A list of `Output`s, whose length matches the length of `items`, where
-      each `Output` corresponds to each item.
+      A list of `Tensors`, whose length matches the length of `items`, where
+      each `Tensor` corresponds to each item.
 
     Raises:
       ValueError: If any of the items cannot be satisfied.

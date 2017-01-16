@@ -26,7 +26,7 @@ not specified), it is assumed that the initial shape of each tensor in
 `loop_vars` is the same in every iteration. The `shape_invariants` argument
 allows the caller to specify a less specific shape invariant for each loop
 variable, which is needed if the shape varies between iterations. The
-[`Output.set_shape()`](../../api_docs/python/framework.md#Output.set_shape)
+[`Tensor.set_shape()`](../../api_docs/python/framework.md#Tensor.set_shape)
 function may also be used in the `body` function to indicate that
 the output loop variable has a particular shape. The shape invariant for
 SparseTensor and IndexedSlices are treated specially as follows:
@@ -35,7 +35,7 @@ a) If a loop variable is a SparseTensor, the shape invariant must be
 TensorShape([r]) where r is the rank of the dense tensor represented
 by the sparse tensor. It means the shapes of the three tensors of the
 SparseTensor are ([None], [None, r], [r]). NOTE: The shape invariant here
-is the shape of the SparseTensor.shape property. It must be the shape of
+is the shape of the SparseTensor.dense_shape property. It must be the shape of
 a vector.
 
 b) If a loop variable is an IndexedSlices, the shape invariant must be
@@ -62,7 +62,7 @@ sequences and large batches.
 *  <b>`cond`</b>: A callable that represents the termination condition of the loop.
 *  <b>`body`</b>: A callable that represents the loop body.
 *  <b>`loop_vars`</b>: A (possibly nested) tuple, namedtuple or list of numpy array,
-    `Output`, and `TensorArray` objects.
+    `Tensor`, and `TensorArray` objects.
 *  <b>`shape_invariants`</b>: The shape invariants for the loop variables.
 *  <b>`parallel_iterations`</b>: The number of iterations allowed to run in parallel.
     It must be a positive integer.
@@ -109,9 +109,9 @@ Example using shape_invariants:
   i0 = tf.constant(0)
   m0 = tf.ones([2, 2])
   c = lambda i, m: i < 10
-  b = lambda i, m: [i+1, tf.concat(0, [m, m])]
+  b = lambda i, m: [i+1, tf.concat([m, m], axis=0)]
   tf.while_loop(
       c, b, loop_vars=[i0, m0],
-      shape_invariants=[i0.get_shape(), tensor_shape.TensorShape([None, 2])])
+      shape_invariants=[i0.get_shape(), tf.TensorShape([None, 2])])
   ```
 

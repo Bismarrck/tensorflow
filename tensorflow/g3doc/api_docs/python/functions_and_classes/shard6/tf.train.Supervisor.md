@@ -91,7 +91,7 @@ following values for the --master flag:
   details.
 
 * Specifying `'grpc://hostname:port'` requests a session that uses
-  the RPC interface to a specific , and also allows the in-process
+  the RPC interface to a specific host, and also allows the in-process
   master to access remote tensorflow workers. Often, it is
   appropriate to pass `server.target` (for some `tf.train.Server`
   named `server).
@@ -111,7 +111,7 @@ every 60 seconds, so we launch it with `sv.loop()`.
   ...
   sv = Supervisor(logdir='/tmp/mydir')
   with sv.managed_session(FLAGS.master) as sess:
-    sv.loop(60, print_loss, (sess))
+    sv.loop(60, print_loss, (sess, ))
     while not sv.should_stop():
       sess.run(my_train_op)
   ```
@@ -164,18 +164,18 @@ Create a `Supervisor`.
     default `Graph`.  The supervisor may add operations to the graph before
     creating a session, but the graph should not be modified by the caller
     after passing it to the supervisor.
-*  <b>`ready_op`</b>: 1-D string `Output`.  This tensor is evaluated by supervisors in
+*  <b>`ready_op`</b>: 1-D string `Tensor`.  This tensor is evaluated by supervisors in
     `prepare_or_wait_for_session()` to check if the model is ready to use.
     The model is considered ready if it returns an empty array.  Defaults to
     the tensor returned from `tf.report_uninitialized_variables()`  If
     `None`, the model is not checked for readiness.
-*  <b>`ready_for_local_init_op`</b>: 1-D string `Output`.  This tensor is evaluated by
+*  <b>`ready_for_local_init_op`</b>: 1-D string `Tensor`.  This tensor is evaluated by
     supervisors in `prepare_or_wait_for_session()` to check if the model is
     ready to run the local_init_op.
     The model is considered ready if it returns an empty array.  Defaults to
     the tensor returned from
-    `tf.report_uninitialized_variables(tf.all_variables())`. If `None`, the
-    model is not checked for readiness before running local_init_op.
+    `tf.report_uninitialized_variables(tf.global_variables())`. If `None`,
+    the model is not checked for readiness before running local_init_op.
 *  <b>`is_chief`</b>: If True, create a chief supervisor in charge of initializing
     and restoring the model.  If False, create a supervisor that relies
     on a chief supervisor for inits and restore.
@@ -183,7 +183,7 @@ Create a `Supervisor`.
     when it can not be recovered.  Defaults to an `Operation` that
     initializes all variables.  If `None`, no initialization is done
     automatically unless you pass a value for `init_fn`, see below.
-*  <b>`init_feed_dict`</b>: A dictionary that maps `Output` objects to feed values.
+*  <b>`init_feed_dict`</b>: A dictionary that maps `Tensor` objects to feed values.
     This feed dictionary will be used when `init_op` is evaluated.
 *  <b>`local_init_op`</b>: `Operation`. Used by all supervisors to run initializations
     that should run for every new supervisor instance. By default these

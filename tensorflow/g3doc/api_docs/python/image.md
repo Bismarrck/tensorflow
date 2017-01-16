@@ -2,7 +2,7 @@
 
 # Images
 
-Note: Functions taking `Output` arguments can also take anything accepted by
+Note: Functions taking `Tensor` arguments can also take anything accepted by
 [`tf.convert_to_tensor`](framework.md#convert_to_tensor).
 
 [TOC]
@@ -35,19 +35,19 @@ convert $src.gif -coalesce $dst.gif
 ##### Args:
 
 
-*  <b>`contents`</b>: An `Output` of type `string`. 0-D.  The GIF-encoded image.
+*  <b>`contents`</b>: A `Tensor` of type `string`. 0-D.  The GIF-encoded image.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output` of type `uint8`.
+  A `Tensor` of type `uint8`.
   4-D with shape `[num_frames, height, width, 3]`. RGB order
 
 
 
 - - -
 
-### `tf.image.decode_jpeg(contents, channels=None, ratio=None, fancy_upscaling=None, try_recover_truncated=None, acceptable_fraction=None, name=None)` {#decode_jpeg}
+### `tf.image.decode_jpeg(contents, channels=None, ratio=None, fancy_upscaling=None, try_recover_truncated=None, acceptable_fraction=None, dct_method=None, name=None)` {#decode_jpeg}
 
 Decode a JPEG-encoded image to a uint8 tensor.
 
@@ -70,7 +70,7 @@ downscaling the image later.
 ##### Args:
 
 
-*  <b>`contents`</b>: An `Output` of type `string`. 0-D.  The JPEG-encoded image.
+*  <b>`contents`</b>: A `Tensor` of type `string`. 0-D.  The JPEG-encoded image.
 *  <b>`channels`</b>: An optional `int`. Defaults to `0`.
     Number of color channels for the decoded image.
 *  <b>`ratio`</b>: An optional `int`. Defaults to `1`. Downscaling ratio.
@@ -82,11 +82,18 @@ downscaling the image later.
 *  <b>`acceptable_fraction`</b>: An optional `float`. Defaults to `1`.
     The minimum required fraction of lines before a truncated
     input is accepted.
+*  <b>`dct_method`</b>: An optional `string`. Defaults to `""`.
+    string specifying a hint about the algorithm used for
+    decompression.  Defaults to "" which maps to a system-specific
+    default.  Currently valid values are ["INTEGER_FAST",
+    "INTEGER_ACCURATE"].  The hint may be ignored (e.g., the internal
+    jpeg library changes to a version that does not have that specific
+    option.)
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output` of type `uint8`. 3-D with shape `[height, width, channels]`..
+  A `Tensor` of type `uint8`. 3-D with shape `[height, width, channels]`..
 
 
 - - -
@@ -115,7 +122,7 @@ in function of the number of channels in `image`:
 ##### Args:
 
 
-*  <b>`image`</b>: An `Output` of type `uint8`.
+*  <b>`image`</b>: A `Tensor` of type `uint8`.
     3-D with shape `[height, width, channels]`.
 *  <b>`format`</b>: An optional `string` from: `"", "grayscale", "rgb"`. Defaults to `""`.
     Per pixel image format.
@@ -140,7 +147,7 @@ in function of the number of channels in `image`:
 
 ##### Returns:
 
-  An `Output` of type `string`. 0-D. JPEG-encoded image.
+  A `Tensor` of type `string`. 0-D. JPEG-encoded image.
 
 
 
@@ -166,7 +173,7 @@ of color channels.
 ##### Args:
 
 
-*  <b>`contents`</b>: An `Output` of type `string`. 0-D.  The PNG-encoded image.
+*  <b>`contents`</b>: A `Tensor` of type `string`. 0-D.  The PNG-encoded image.
 *  <b>`channels`</b>: An optional `int`. Defaults to `0`.
     Number of color channels for the decoded image.
 *  <b>`dtype`</b>: An optional `tf.DType` from: `tf.uint8, tf.uint16`. Defaults to `tf.uint8`.
@@ -174,7 +181,7 @@ of color channels.
 
 ##### Returns:
 
-  A `Output` of type `dtype`. 3-D with shape `[height, width, channels]`.
+  A `Tensor` of type `dtype`. 3-D with shape `[height, width, channels]`.
 
 
 - - -
@@ -198,14 +205,44 @@ the smallest output, but is slower.
 ##### Args:
 
 
-*  <b>`image`</b>: A `Output`. Must be one of the following types: `uint8`, `uint16`.
+*  <b>`image`</b>: A `Tensor`. Must be one of the following types: `uint8`, `uint16`.
     3-D with shape `[height, width, channels]`.
 *  <b>`compression`</b>: An optional `int`. Defaults to `-1`. Compression level.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  An `Output` of type `string`. 0-D. PNG-encoded image.
+  A `Tensor` of type `string`. 0-D. PNG-encoded image.
+
+
+
+- - -
+
+### `tf.image.decode_image(contents, channels=None, name=None)` {#decode_image}
+
+Convenience function for `decode_gif`, `decode_jpeg`, and `decode_png`.
+Detects whether an image is a GIF, JPEG, or PNG, and performs the appropriate
+operation to convert the input bytes `string` into a `Tensor` of type `uint8`.
+
+Note: `decode_gif` returns a 4-D array `[num_frames, height, width, 3]`, as
+opposed to `decode_jpeg` and `decode_png`, which return 3-D arrays
+`[height, width, num_channels]`. Make sure to take this into account when
+constructing your graph if you are intermixing GIF files with JPEG and/or PNG
+files.
+
+##### Args:
+
+
+*  <b>`contents`</b>: 0-D `string`. The encoded image bytes.
+*  <b>`channels`</b>: An optional `int`. Defaults to `0`. Number of color channels for
+    the decoded image.
+*  <b>`name`</b>: A name for the operation (optional)
+
+##### Returns:
+
+  `Tensor` with type `uint8` with shape `[height, width, num_channels]` for
+    JPEG and PNG images and shape `[num_frames, height, width, 3]` for GIF
+    images.
 
 
 
@@ -287,7 +324,7 @@ Input images can be of different types but output images are always float.
 ##### Args:
 
 
-*  <b>`images`</b>: A `Output`. Must be one of the following types: `uint8`, `int8`, `int16`, `int32`, `int64`, `half`, `float32`, `float64`.
+*  <b>`images`</b>: A `Tensor`. Must be one of the following types: `uint8`, `int8`, `int16`, `int32`, `int64`, `half`, `float32`, `float64`.
     4-D with shape `[batch, height, width, channels]`.
 *  <b>`size`</b>: A 1-D int32 Tensor of 2 elements: `new_height, new_width`.  The
     new size for the images.
@@ -299,7 +336,7 @@ Input images can be of different types but output images are always float.
 
 ##### Returns:
 
-  An `Output` of type `float32`. 4-D with shape
+  A `Tensor` of type `float32`. 4-D with shape
   `[batch, new_height, new_width, channels]`.
 
 
@@ -314,7 +351,7 @@ Input images can be of different types but output images are always float.
 ##### Args:
 
 
-*  <b>`images`</b>: A `Output`. Must be one of the following types: `uint8`, `int8`, `int16`, `int32`, `int64`, `half`, `float32`, `float64`.
+*  <b>`images`</b>: A `Tensor`. Must be one of the following types: `uint8`, `int8`, `int16`, `int32`, `int64`, `half`, `float32`, `float64`.
     4-D with shape `[batch, height, width, channels]`.
 *  <b>`size`</b>: A 1-D int32 Tensor of 2 elements: `new_height, new_width`.  The
     new size for the images.
@@ -326,7 +363,7 @@ Input images can be of different types but output images are always float.
 
 ##### Returns:
 
-  An `Output` of type `float32`. 4-D with shape
+  A `Tensor` of type `float32`. 4-D with shape
   `[batch, new_height, new_width, channels]`.
 
 
@@ -341,7 +378,7 @@ Input images can be of different types but output images are always float.
 ##### Args:
 
 
-*  <b>`images`</b>: A `Output`. Must be one of the following types: `uint8`, `int8`, `int16`, `int32`, `int64`, `half`, `float32`, `float64`.
+*  <b>`images`</b>: A `Tensor`. Must be one of the following types: `uint8`, `int8`, `int16`, `int32`, `int64`, `half`, `float32`, `float64`.
     4-D with shape `[batch, height, width, channels]`.
 *  <b>`size`</b>: A 1-D int32 Tensor of 2 elements: `new_height, new_width`.  The
     new size for the images.
@@ -353,7 +390,7 @@ Input images can be of different types but output images are always float.
 
 ##### Returns:
 
-  An `Output` of type `float32`. 4-D with shape
+  A `Tensor` of type `float32`. 4-D with shape
   `[batch, new_height, new_width, channels]`.
 
 
@@ -366,7 +403,7 @@ Resize `images` to `size` using nearest neighbor interpolation.
 ##### Args:
 
 
-*  <b>`images`</b>: A `Output`. Must be one of the following types: `uint8`, `int8`, `int16`, `int32`, `int64`, `half`, `float32`, `float64`.
+*  <b>`images`</b>: A `Tensor`. Must be one of the following types: `uint8`, `int8`, `int16`, `int32`, `int64`, `half`, `float32`, `float64`.
     4-D with shape `[batch, height, width, channels]`.
 *  <b>`size`</b>: A 1-D int32 Tensor of 2 elements: `new_height, new_width`.  The
     new size for the images.
@@ -378,7 +415,7 @@ Resize `images` to `size` using nearest neighbor interpolation.
 
 ##### Returns:
 
-  A `Output`. Has the same type as `images`. 4-D with shape
+  A `Tensor`. Has the same type as `images`. 4-D with shape
   `[batch, new_height, new_width, channels]`.
 
 
@@ -551,13 +588,13 @@ The argument `normalized` and `centered` controls how the windows are built:
 ##### Args:
 
 
-*  <b>`input`</b>: An `Output` of type `float32`.
+*  <b>`input`</b>: A `Tensor` of type `float32`.
     A 4-D float tensor of shape `[batch_size, height, width, channels]`.
-*  <b>`size`</b>: An `Output` of type `int32`.
+*  <b>`size`</b>: A `Tensor` of type `int32`.
     A 1-D tensor of 2 elements containing the size of the glimpses
     to extract.  The glimpse height must be specified first, following
     by the glimpse width.
-*  <b>`offsets`</b>: An `Output` of type `float32`.
+*  <b>`offsets`</b>: A `Tensor` of type `float32`.
     A 2-D integer tensor of shape `[batch_size, 2]` containing
     the x, y locations of the center of each window.
 *  <b>`centered`</b>: An optional `bool`. Defaults to `True`.
@@ -574,7 +611,7 @@ The argument `normalized` and `centered` controls how the windows are built:
 
 ##### Returns:
 
-  An `Output` of type `float32`.
+  A `Tensor` of type `float32`.
   A tensor representing the glimpses `[batch_size,
   glimpse_height, glimpse_width, channels]`.
 
@@ -598,10 +635,10 @@ result is a 4-D tensor `[num_boxes, crop_height, crop_width, depth]`.
 ##### Args:
 
 
-*  <b>`image`</b>: A `Output`. Must be one of the following types: `uint8`, `int8`, `int16`, `int32`, `int64`, `half`, `float32`, `float64`.
+*  <b>`image`</b>: A `Tensor`. Must be one of the following types: `uint8`, `int8`, `int16`, `int32`, `int64`, `half`, `float32`, `float64`.
     A 4-D tensor of shape `[batch, image_height, image_width, depth]`.
     Both `image_height` and `image_width` need to be positive.
-*  <b>`boxes`</b>: An `Output` of type `float32`.
+*  <b>`boxes`</b>: A `Tensor` of type `float32`.
     A 2-D tensor of shape `[num_boxes, 4]`. The `i`-th row of the tensor
     specifies the coordinates of a box in the `box_ind[i]` image and is specified
     in normalized coordinates `[y1, x1, y2, x2]`. A normalized coordinate value of
@@ -612,10 +649,10 @@ result is a 4-D tensor `[num_boxes, crop_height, crop_width, depth]`.
     image. The width dimension is treated similarly. Normalized coordinates
     outside the `[0, 1]` range are allowed, in which case we use
     `extrapolation_value` to extrapolate the input image values.
-*  <b>`box_ind`</b>: An `Output` of type `int32`.
+*  <b>`box_ind`</b>: A `Tensor` of type `int32`.
     A 1-D tensor of shape `[num_boxes]` with int32 values in `[0, batch)`.
     The value of `box_ind[i]` specifies the image that the `i`-th box refers to.
-*  <b>`crop_size`</b>: An `Output` of type `int32`.
+*  <b>`crop_size`</b>: A `Tensor` of type `int32`.
     A 1-D tensor of 2 elements, `size = [crop_height, crop_width]`. All
     cropped image patches are resized to this size. The aspect ratio of the image
     content is not preserved. Both `crop_height` and `crop_width` need to be
@@ -629,7 +666,7 @@ result is a 4-D tensor `[num_boxes, crop_height, crop_width, depth]`.
 
 ##### Returns:
 
-  An `Output` of type `float32`.
+  A `Tensor` of type `float32`.
   A 4-D tensor of shape `[num_boxes, crop_height, crop_width, depth]`.
 
 
@@ -877,13 +914,13 @@ See `rgb_to_hsv` for a description of the HSV encoding.
 ##### Args:
 
 
-*  <b>`images`</b>: A `Output`. Must be one of the following types: `float32`, `float64`.
+*  <b>`images`</b>: A `Tensor`. Must be one of the following types: `float32`, `float64`.
     1-D or higher rank. HSV data to convert. Last dimension must be size 3.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  A `Output`. Has the same type as `images`. `images` converted to RGB.
+  A `Tensor`. Has the same type as `images`. `images` converted to RGB.
 
 
 - - -
@@ -903,13 +940,13 @@ corresponds to pure red, hue 1/3 is pure green, and 2/3 is pure blue.
 ##### Args:
 
 
-*  <b>`images`</b>: A `Output`. Must be one of the following types: `float32`, `float64`.
+*  <b>`images`</b>: A `Tensor`. Must be one of the following types: `float32`, `float64`.
     1-D or higher rank. RGB data to convert. Last dimension must be size 3.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  A `Output`. Has the same type as `images`. `images` converted to HSV.
+  A `Tensor`. Has the same type as `images`. `images` converted to HSV.
 
 
 
@@ -1283,16 +1320,16 @@ Parts of the bounding box may fall outside the image.
 ##### Args:
 
 
-*  <b>`images`</b>: A `Output`. Must be one of the following types: `float32`, `half`.
+*  <b>`images`</b>: A `Tensor`. Must be one of the following types: `float32`, `half`.
     4-D with shape `[batch, height, width, depth]`. A batch of images.
-*  <b>`boxes`</b>: An `Output` of type `float32`.
+*  <b>`boxes`</b>: A `Tensor` of type `float32`.
     3-D with shape `[batch, num_bounding_boxes, 4]` containing bounding
     boxes.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  A `Output`. Has the same type as `images`.
+  A `Tensor`. Has the same type as `images`.
   4-D with the same shape as `images`. The batch of input images with
   bounding boxes drawn on the images.
 
@@ -1325,12 +1362,12 @@ using the `tf.gather operation`.  For example:
 ##### Args:
 
 
-*  <b>`boxes`</b>: An `Output` of type `float32`.
+*  <b>`boxes`</b>: A `Tensor` of type `float32`.
     A 2-D float tensor of shape `[num_boxes, 4]`.
-*  <b>`scores`</b>: An `Output` of type `float32`.
+*  <b>`scores`</b>: A `Tensor` of type `float32`.
     A 1-D float tensor of shape `[num_boxes]` representing a single
     score corresponding to each box (each row of boxes).
-*  <b>`max_output_size`</b>: An `Output` of type `int32`.
+*  <b>`max_output_size`</b>: A `Tensor` of type `int32`.
     A scalar integer tensor representing the maximum number of
     boxes to be selected by non max suppression.
 *  <b>`iou_threshold`</b>: An optional `float`. Defaults to `0.5`.
@@ -1340,7 +1377,7 @@ using the `tf.gather operation`.  For example:
 
 ##### Returns:
 
-  An `Output` of type `int32`.
+  A `Tensor` of type `int32`.
   A 1-D integer tensor of shape `[M]` representing the selected
   indices from the boxes tensor, where `M <= max_output_size`.
 
@@ -1393,9 +1430,9 @@ false and no bounding boxes are supplied, an error is raised.
 ##### Args:
 
 
-*  <b>`image_size`</b>: A `Output`. Must be one of the following types: `uint8`, `int8`, `int16`, `int32`, `int64`.
+*  <b>`image_size`</b>: A `Tensor`. Must be one of the following types: `uint8`, `int8`, `int16`, `int32`, `int64`.
     1-D, containing `[height, width, channels]`.
-*  <b>`bounding_boxes`</b>: An `Output` of type `float32`.
+*  <b>`bounding_boxes`</b>: A `Tensor` of type `float32`.
     3-D with shape `[batch, N, 4]` describing the N bounding boxes
     associated with the image.
 *  <b>`seed`</b>: An optional `int`. Defaults to `0`.
@@ -1406,7 +1443,9 @@ false and no bounding boxes are supplied, an error is raised.
     A second seed to avoid seed collision.
 *  <b>`min_object_covered`</b>: An optional `float`. Defaults to `0.1`.
     The cropped area of the image must contain at least this
-    fraction of any bounding box supplied.
+    fraction of any bounding box supplied. The value of this parameter should be
+    non-negative. In the case of 0, the cropped area does not need to overlap
+    any of the bounding boxes supplied.
 *  <b>`aspect_ratio_range`</b>: An optional list of `floats`. Defaults to `[0.75, 1.33]`.
     The cropped area of the image must have an aspect ratio =
     width / height within this range.
@@ -1425,13 +1464,13 @@ false and no bounding boxes are supplied, an error is raised.
 
 ##### Returns:
 
-  A tuple of `Output` objects (begin, size, bboxes).
+  A tuple of `Tensor` objects (begin, size, bboxes).
 
-*  <b>`begin`</b>: A `Output`. Has the same type as `image_size`. 1-D, containing `[offset_height, offset_width, 0]`. Provide as input to
+*  <b>`begin`</b>: A `Tensor`. Has the same type as `image_size`. 1-D, containing `[offset_height, offset_width, 0]`. Provide as input to
     `tf.slice`.
-*  <b>`size`</b>: A `Output`. Has the same type as `image_size`. 1-D, containing `[target_height, target_width, -1]`. Provide as input to
+*  <b>`size`</b>: A `Tensor`. Has the same type as `image_size`. 1-D, containing `[target_height, target_width, -1]`. Provide as input to
     `tf.slice`.
-*  <b>`bboxes`</b>: An `Output` of type `float32`. 3-D with shape `[1, 1, 4]` containing the distorted bounding box.
+*  <b>`bboxes`</b>: A `Tensor` of type `float32`. 3-D with shape `[1, 1, 4]` containing the distorted bounding box.
     Provide as input to `tf.image.draw_bounding_boxes`.
 
 

@@ -25,7 +25,6 @@ from tensorflow.contrib.framework.python.ops import variables as contrib_variabl
 from tensorflow.contrib.learn.python.learn.estimators import model_fn
 from tensorflow.contrib.session_bundle import exporter
 from tensorflow.contrib.session_bundle import gc
-from tensorflow.core.protobuf import saver_pb2
 from tensorflow.python.client import session as tf_session
 from tensorflow.python.framework import dtypes
 from tensorflow.python.framework import ops
@@ -55,7 +54,7 @@ def _get_saver():
     else:
       saver = None
   if saver is None and variables.global_variables():
-    saver = tf_saver.Saver(write_version=saver_pb2.SaverDef.V1)
+    saver = tf_saver.Saver()
     ops.add_to_collection(ops.GraphKeys.SAVERS, saver)
   return saver
 
@@ -89,9 +88,9 @@ def generic_signature_fn(examples, unused_features, predictions):
   export_estimator.
 
   Args:
-    examples: `Output`.
-    unused_features: `dict` of `Output`s.
-    predictions: `Output` or `dict` of `Output`s.
+    examples: `Tensor`.
+    unused_features: `dict` of `Tensor`s.
+    predictions: `Tensor` or `dict` of `Tensor`s.
 
   Returns:
     Tuple of default signature and empty named signatures.
@@ -114,10 +113,10 @@ def classification_signature_fn(examples, unused_features, predictions):
   """Creates classification signature from given examples and predictions.
 
   Args:
-    examples: `Output`.
-    unused_features: `dict` of `Output`s.
-    predictions: `Output` or dict of tensors that contains the classes tensor
-      as in {'classes': `Output`}.
+    examples: `Tensor`.
+    unused_features: `dict` of `Tensor`s.
+    predictions: `Tensor` or dict of tensors that contains the classes tensor
+      as in {'classes': `Tensor`}.
 
   Returns:
     Tuple of default classification signature and empty named signatures.
@@ -142,10 +141,10 @@ def classification_signature_fn_with_prob(
   """Classification signature from given examples and predicted probabilities.
 
   Args:
-    examples: `Output`.
-    unused_features: `dict` of `Output`s.
-    predictions: `Output` of predicted probabilities or dict that contains the
-      probabilities tensor as in {'probabilities', `Output`}.
+    examples: `Tensor`.
+    unused_features: `dict` of `Tensor`s.
+    predictions: `Tensor` of predicted probabilities or dict that contains the
+      probabilities tensor as in {'probabilities', `Tensor`}.
 
   Returns:
     Tuple of default classification signature and empty named signatures.
@@ -169,9 +168,9 @@ def regression_signature_fn(examples, unused_features, predictions):
   """Creates regression signature from given examples and predictions.
 
   Args:
-    examples: `Output`.
-    unused_features: `dict` of `Output`s.
-    predictions: `Output`.
+    examples: `Tensor`.
+    unused_features: `dict` of `Tensor`s.
+    predictions: `Tensor`.
 
   Returns:
     Tuple of default regression signature and empty named signatures.
@@ -191,11 +190,11 @@ def logistic_regression_signature_fn(examples, unused_features, predictions):
   """Creates logistic regression signature from given examples and predictions.
 
   Args:
-    examples: `Output`.
-    unused_features: `dict` of `Output`s.
-    predictions: `Output` of shape [batch_size, 2] of predicted probabilities or
+    examples: `Tensor`.
+    unused_features: `dict` of `Tensor`s.
+    predictions: `Tensor` of shape [batch_size, 2] of predicted probabilities or
       dict that contains the probabilities tensor as in
-      {'probabilities', `Output`}.
+      {'probabilities', `Tensor`}.
 
   Returns:
     Tuple of default regression signature and named signature.

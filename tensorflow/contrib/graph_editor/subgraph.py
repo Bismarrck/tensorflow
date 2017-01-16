@@ -165,14 +165,14 @@ class SubGraphView(object):
     Args:
       inside_ops: an object convertible to a list of `tf.Operation`. This list
         defines all the operations in the subgraph.
-      passthrough_ts: an object convertible to a list of `tf.Output`. This list
+      passthrough_ts: an object convertible to a list of `tf.Tensor`. This list
         define all the "passthrough" tensors. A passthrough tensor is a tensor
         which goes directly from the input of the subgraph to it output, without
         any intermediate operations. All the non passthrough tensors are
         silently ignored.
     Raises:
       TypeError: if inside_ops cannot be converted to a list of `tf.Operation`
-        or if `passthrough_ts` cannot be converted to a list of `tf.Output`.
+        or if `passthrough_ts` cannot be converted to a list of `tf.Tensor`.
     """
 
     inside_ops = util.make_list_of_op(inside_ops)
@@ -561,10 +561,19 @@ class SubGraphView(object):
     return subgraph_id
 
   def consumers(self):
-    """Return a Python set of all the consumers of this subgraph view."""
+    """Return a Python set of all the consumers of this subgraph view.
+
+    A consumer of a subgraph view is a tf.Operation which is a consumer
+    of one of the output tensors and is not in the subgraph.
+
+    Returns:
+      A list of `tf.Operation` which are the consumers of this subgraph view.
+    """
+    ops_set = frozenset(self._ops)
     res = []
     for output in self._output_ts:
-      util.concatenate_unique(res, output.consumers())
+      consumers = [op for op in output.consumers() if op not in ops_set]
+      util.concatenate_unique(res, consumers)
     return res
 
 
@@ -598,7 +607,7 @@ def make_view(*args, **kwargs):
 
   Args:
     *args: list of 1) regular expressions (compiled or not) or  2) (array of)
-      `tf.Operation` 3) (array of) `tf.Output`. Those objects will be converted
+      `tf.Operation` 3) (array of) `tf.Tensor`. Those objects will be converted
       into a list of operations and a list of candidate for passthrough tensors.
     **kwargs: keyword graph is used 1) to check that the ops and ts are from
       the correct graph 2) for regular expression query
@@ -606,7 +615,7 @@ def make_view(*args, **kwargs):
     A subgraph view.
   Raises:
     TypeError: if the optional keyword argument graph is not a `tf.Graph`
-      or if an argument in args is not an (array of) `tf.Output`
+      or if an argument in args is not an (array of) `tf.Tensor`
       or an (array of) `tf.Operation` or a string or a regular expression.
     ValueError: if one of the keyword arguments is unexpected.
   """

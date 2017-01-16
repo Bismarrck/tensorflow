@@ -17,6 +17,7 @@
 
 ### Class for writing Summaries
 @@FileWriter
+@@FileWriterCache
 
 ### Summary Ops
 @@tensor_summary
@@ -56,9 +57,10 @@ from tensorflow.python.ops import gen_logging_ops as _gen_logging_ops
 from tensorflow.python.ops.summary_ops import tensor_summary
 # pylint: enable=unused-import
 from tensorflow.python.platform import tf_logging as _logging
-# exports FileWriter
+# exports FileWriter, FileWriterCache
 # pylint: disable=unused-import
 from tensorflow.python.summary.writer.writer import FileWriter
+from tensorflow.python.summary.writer.writer_cache import FileWriterCache
 # pylint: enable=unused-import
 from tensorflow.python.util import compat as _compat
 from tensorflow.python.util.all_util import remove_undocumented
@@ -106,7 +108,7 @@ def scalar(name, tensor, collections=None):
       added to these collections. Defaults to `[GraphKeys.SUMMARIES]`.
 
   Returns:
-    A scalar `Output` of type `string`. Which contains a `Summary` protobuf.
+    A scalar `Tensor` of type `string`. Which contains a `Summary` protobuf.
 
   Raises:
     ValueError: If tensor has the wrong shape or type.
@@ -123,7 +125,7 @@ def scalar(name, tensor, collections=None):
 def image(name, tensor, max_outputs=3, collections=None):
   """Outputs a `Summary` protocol buffer with images.
 
-  The summary has up to `max_images` summary values containing images. The
+  The summary has up to `max_outputs` summary values containing images. The
   images are built from `tensor` which must be 4-D with shape `[batch_size,
   height, width, channels]` and where `channels` can be:
 
@@ -153,14 +155,14 @@ def image(name, tensor, max_outputs=3, collections=None):
   Args:
     name: A name for the generated node. Will also serve as a series name in
       TensorBoard.
-    tensor: A 4-D `uint8` or `float32` `Output` of shape `[batch_size, height,
+    tensor: A 4-D `uint8` or `float32` `Tensor` of shape `[batch_size, height,
       width, channels]` where `channels` is 1, 3, or 4.
     max_outputs: Max number of batch elements to generate images for.
     collections: Optional list of ops.GraphKeys.  The collections to add the
       summary to.  Defaults to [_ops.GraphKeys.SUMMARIES]
 
   Returns:
-    A scalar `Output` of type `string`. The serialized `Summary` protocol
+    A scalar `Tensor` of type `string`. The serialized `Summary` protocol
     buffer.
   """
   name = _clean_tag(name)
@@ -188,13 +190,13 @@ def histogram(name, values, collections=None):
   Args:
     name: A name for the generated node. Will also serve as a series name in
       TensorBoard.
-    values: A real numeric `Output`. Any shape. Values to use to
+    values: A real numeric `Tensor`. Any shape. Values to use to
       build the histogram.
     collections: Optional list of graph collections keys. The new summary op is
       added to these collections. Defaults to `[GraphKeys.SUMMARIES]`.
 
   Returns:
-    A scalar `Output` of type `string`. The serialized `Summary` protocol
+    A scalar `Tensor` of type `string`. The serialized `Summary` protocol
     buffer.
   """
   # pylint: enable=line-too-long
@@ -227,16 +229,16 @@ def audio(name, tensor, sample_rate, max_outputs=3, collections=None):
   Args:
     name: A name for the generated node. Will also serve as a series name in
       TensorBoard.
-    tensor: A 3-D `float32` `Output` of shape `[batch_size, frames, channels]`
-      or a 2-D `float32` `Output` of shape `[batch_size, frames]`.
-    sample_rate: A Scalar `float32` `Output` indicating the sample rate of the
+    tensor: A 3-D `float32` `Tensor` of shape `[batch_size, frames, channels]`
+      or a 2-D `float32` `Tensor` of shape `[batch_size, frames]`.
+    sample_rate: A Scalar `float32` `Tensor` indicating the sample rate of the
       signal in hertz.
     max_outputs: Max number of batch elements to generate audio for.
     collections: Optional list of ops.GraphKeys.  The collections to add the
       summary to.  Defaults to [_ops.GraphKeys.SUMMARIES]
 
   Returns:
-    A scalar `Output` of type `string`. The serialized `Summary` protocol
+    A scalar `Tensor` of type `string`. The serialized `Summary` protocol
     buffer.
   """
   # pylint: enable=line-too-long
@@ -268,14 +270,14 @@ def merge(inputs, collections=None, name=None):
   in the summaries to merge use the same tag.
 
   Args:
-    inputs: A list of `string` `Output` objects containing serialized `Summary`
+    inputs: A list of `string` `Tensor` objects containing serialized `Summary`
       protocol buffers.
     collections: Optional list of graph collections keys. The new summary op is
-      added to these collections. Defaults to `[GraphKeys.SUMMARIES]`.
+      added to these collections. Defaults to `[]`.
     name: A name for the operation (optional).
 
   Returns:
-    A scalar `Output` of type `string`. The serialized `Summary` protocol
+    A scalar `Tensor` of type `string`. The serialized `Summary` protocol
     buffer resulting from the merging.
   """
   # pylint: enable=line-too-long
@@ -296,7 +298,7 @@ def merge_all(key=_ops.GraphKeys.SUMMARIES):
 
   Returns:
     If no summaries were collected, returns None.  Otherwise returns a scalar
-    `Output` of type `string` containing the serialized `Summary` protocol
+    `Tensor` of type `string` containing the serialized `Summary` protocol
     buffer resulting from the merging.
   """
   summary_ops = _ops.get_collection(key)

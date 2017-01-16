@@ -33,7 +33,6 @@ from tensorflow.contrib.framework.python.ops import ops as contrib_ops
 from tensorflow.contrib.framework.python.ops import variables as contrib_variables
 from tensorflow.contrib.learn.python.learn import monitors as monitors_lib
 from tensorflow.core.framework import summary_pb2
-from tensorflow.core.protobuf import saver_pb2
 from tensorflow.python.client import session as tf_session
 from tensorflow.python.framework import errors
 from tensorflow.python.framework import ops
@@ -51,6 +50,7 @@ from tensorflow.python.training import saver as tf_saver
 from tensorflow.python.training import session_manager as session_manager_lib
 from tensorflow.python.training import summary_io
 from tensorflow.python.training import supervisor as tf_supervisor
+from tensorflow.python.util.deprecation import deprecated
 
 # Singleton for SummaryWriter per logdir folder.
 _SUMMARY_WRITERS = {}
@@ -58,7 +58,13 @@ _SUMMARY_WRITERS = {}
 # Lock protecting _SUMMARY_WRITERS
 _summary_writer_lock = threading.Lock()
 
+_graph_action_deprecation = deprecated(
+    '2017-02-15',
+    'graph_actions.py will be deleted. Use tf.train.* utilities instead. '
+    'You can use learn/estimators/estimator.py as an example.')
 
+
+@_graph_action_deprecation
 def clear_summary_writers():
   """Clear cached summary writers. Currently only used for unit tests."""
   return summary_io.SummaryWriterCache.clear()
@@ -129,6 +135,7 @@ def _monitored_train(graph,
                      supervisor_save_model_secs=600,
                      supervisor_save_model_steps=None,
                      keep_checkpoint_max=5,
+                     keep_checkpoint_every_n_hours=10000.0,
                      supervisor_save_summaries_secs=None,
                      supervisor_save_summaries_steps=100,
                      feed_fn=None,
@@ -161,7 +168,7 @@ def _monitored_train(graph,
       one is extracted from the graph using the same logic as in `Supervisor`.
     init_op: An op that initializes the graph. If `None`, use `Supervisor`'s
       default.
-    init_feed_dict: A dictionary that maps `Output` objects to feed values.
+    init_feed_dict: A dictionary that maps `Tensor` objects to feed values.
       This feed dictionary will be used when `init_op` is evaluated.
     init_fn: Optional callable passed to Supervisor to initialize the model.
     log_every_steps: Output logs regularly. The logs contain timing data and the
@@ -177,6 +184,13 @@ def _monitored_train(graph,
       keep. As new files are created, older files are deleted. If None or 0,
       all checkpoint files are kept. This is simply passed as the max_to_keep
       arg to `tf.Saver` constructor.
+    keep_checkpoint_every_n_hours: In addition to keeping the most recent
+      `keep_checkpoint_max` checkpoint files, you might want to keep one checkpoint file
+      for every N hours of training.  This can be useful if you want to later
+      analyze how a model progressed during a long training session.  For
+      example, passing `keep_checkpoint_every_n_hours=2` ensures that you keep
+      one checkpoint file for every 2 hours of training.  The default value of
+      10,000 hours effectively disables the feature.
     supervisor_save_summaries_secs: Save summaries every
       `supervisor_save_summaries_secs` seconds when training.
     supervisor_save_summaries_steps: Save summaries every
@@ -249,8 +263,10 @@ def _monitored_train(graph,
 
     def make_saver():
       return tf_saver.Saver(
-          sharded=True, max_to_keep=keep_checkpoint_max, defer_build=True,
-          write_version=saver_pb2.SaverDef.V1)
+          sharded=True,
+          max_to_keep=keep_checkpoint_max,
+          keep_checkpoint_every_n_hours=keep_checkpoint_every_n_hours,
+          defer_build=True)
 
     scaffold = monitored_session.Scaffold(
         init_op=init_op,
@@ -299,11 +315,12 @@ def _monitored_train(graph,
       while not super_sess.should_stop():
         _, loss = super_sess.run([train_op, loss_op], feed_fn() if feed_fn else
                                  None)
+
     summary_io.SummaryWriterCache.clear()
     return loss
 
 
-# TODO(ispir): Deprecate train in favor of supervised_train
+@_graph_action_deprecation
 def train(graph,
           output_dir,
           train_op,
@@ -348,7 +365,7 @@ def train(graph,
       one is extracted from the graph using the same logic as in `Supervisor`.
     init_op: An op that initializes the graph. If `None`, use `Supervisor`'s
       default.
-    init_feed_dict: A dictionary that maps `Output` objects to feed values.
+    init_feed_dict: A dictionary that maps `Tensor` objects to feed values.
       This feed dictionary will be used when `init_op` is evaluated.
     init_fn: Optional callable passed to Supervisor to initialize the model.
     log_every_steps: Output logs regularly. The logs contain timing data and the
@@ -649,6 +666,7 @@ def _write_summary_results(output_dir, eval_results, current_global_step):
   summary_writer.flush()
 
 
+@_graph_action_deprecation
 def evaluate(graph,
              output_dir,
              checkpoint_path,
@@ -662,7 +680,7 @@ def evaluate(graph,
   """Evaluate a model loaded from a checkpoint.
 
   Given `graph`, a directory to write summaries to (`output_dir`), a checkpoint
-  to restore variables from, and a `dict` of `Output`s to evaluate, run an eval
+  to restore variables from, and a `dict` of `Tensor`s to evaluate, run an eval
   loop for `max_steps` steps, or until an exception (generally, an
   end-of-input signal from a reader operation) is raised from running
   `eval_dict`.
@@ -683,7 +701,7 @@ def evaluate(graph,
       returned. If `update_op` is None, then it's evaluated in every step. If
       `max_steps` is `None`, this should depend on a reader that will raise an
       end-of-input exception when the inputs are exhausted.
-    update_op: An `Output` which is run in every step.
+    update_op: A `Tensor` which is run in every step.
     global_step_tensor: A `Variable` containing the global step. If `None`,
       one is extracted from the graph using the same logic as in `Supervisor`.
       Used to place eval summaries on training curves.
@@ -713,11 +731,14 @@ def evaluate(graph,
     # Create or get summary op, global_step and saver.
     saver = _get_saver()
     local_init_op = _get_local_init_op()
+    ready_for_local_init_op = _get_first_op_from_collection(
+        ops.GraphKeys.READY_FOR_LOCAL_INIT_OP)
     ready_op = _get_ready_op()
 
     session_manager = session_manager_lib.SessionManager(
         local_init_op=local_init_op,
-        ready_op=ready_op)
+        ready_op=ready_op,
+        ready_for_local_init_op=ready_for_local_init_op)
     session, initialized = session_manager.recover_session(
         master=supervisor_master,
         saver=saver,
@@ -799,6 +820,7 @@ def evaluate(graph,
   return eval_results, current_global_step
 
 
+@_graph_action_deprecation
 def run_n(output_dict, feed_dict=None, restore_checkpoint_path=None, n=1):
   """Run `output_dict` tensors `n` times, with the same `feed_dict` each run.
 
@@ -820,7 +842,7 @@ def run_n(output_dict, feed_dict=None, restore_checkpoint_path=None, n=1):
       restore_checkpoint_path=restore_checkpoint_path)
 
 
-# TODO(ptucker): Add save_checkpoint_path.
+@_graph_action_deprecation
 def run_feeds_iter(output_dict, feed_dicts, restore_checkpoint_path=None):
   """Run `output_dict` tensors with each input in `feed_dicts`.
 
@@ -828,7 +850,7 @@ def run_feeds_iter(output_dict, feed_dicts, restore_checkpoint_path=None):
   init all variables.
 
   Args:
-    output_dict: A `dict` mapping string names to `Output` objects to run.
+    output_dict: A `dict` mapping string names to `Tensor` objects to run.
       Tensors must all be from the same graph.
     feed_dicts: Iterable of `dict` objects of input values to feed.
     restore_checkpoint_path: A string containing the path to a checkpoint to
@@ -837,7 +859,7 @@ def run_feeds_iter(output_dict, feed_dicts, restore_checkpoint_path=None):
   Yields:
     A sequence of dicts of values read from `output_dict` tensors, one item
     yielded for each item in `feed_dicts`. Keys are the same as `output_dict`,
-    values are the results read from the corresponding `Output` in
+    values are the results read from the corresponding `Tensor` in
     `output_dict`.
 
   Raises:
@@ -872,11 +894,13 @@ def run_feeds_iter(output_dict, feed_dicts, restore_checkpoint_path=None):
           coord.join(threads, stop_grace_period_secs=120)
 
 
+@_graph_action_deprecation
 def run_feeds(*args, **kwargs):
   """See run_feeds_iter(). Returns a `list` instead of an iterator."""
   return list(run_feeds_iter(*args, **kwargs))
 
 
+@_graph_action_deprecation
 def infer(restore_checkpoint_path, output_dict, feed_dict=None):
   """Restore graph from `restore_checkpoint_path` and run `output_dict` tensors.
 
@@ -886,13 +910,13 @@ def infer(restore_checkpoint_path, output_dict, feed_dict=None):
   Args:
     restore_checkpoint_path: A string containing the path to a checkpoint to
       restore.
-    output_dict: A `dict` mapping string names to `Output` objects to run.
+    output_dict: A `dict` mapping string names to `Tensor` objects to run.
       Tensors must all be from the same graph.
-    feed_dict: `dict` object mapping `Output` objects to input values to feed.
+    feed_dict: `dict` object mapping `Tensor` objects to input values to feed.
 
   Returns:
     Dict of values read from `output_dict` tensors. Keys are the same as
-    `output_dict`, values are the results read from the corresponding `Output`
+    `output_dict`, values are the results read from the corresponding `Tensor`
     in `output_dict`.
 
   Raises:

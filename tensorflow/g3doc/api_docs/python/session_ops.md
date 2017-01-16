@@ -2,7 +2,7 @@
 
 # Tensor Handle Operations
 
-Note: Functions taking `Output` arguments can also take anything accepted by
+Note: Functions taking `Tensor` arguments can also take anything accepted by
 [`tf.convert_to_tensor`](framework.md#convert_to_tensor).
 
 [TOC]
@@ -45,12 +45,12 @@ one run call in place, and use it as the input in a future run call.
 *  <b>`Example`</b>: 
 
 ```python
-c = tf.mul(a, b)
+c = tf.multiply(a, b)
 h = tf.get_session_handle(c)
 h = sess.run(h)
 
 p, a = tf.get_session_tensor(h.handle, tf.float32)
-b = tf.mul(a, 10)
+b = tf.multiply(a, 10)
 c = sess.run(b, feed_dict={p: h.handle})
 ```
 
@@ -84,12 +84,12 @@ session.
 *  <b>`Example`</b>: 
 
 ```python
-c = tf.mul(a, b)
+c = tf.multiply(a, b)
 h = tf.get_session_handle(c)
 h = sess.run(h)
 
 p, a = tf.get_session_tensor(h.handle, tf.float32)
-b = tf.mul(a, 10)
+b = tf.multiply(a, 10)
 c = sess.run(b, feed_dict={p: h.handle})
 ```
 

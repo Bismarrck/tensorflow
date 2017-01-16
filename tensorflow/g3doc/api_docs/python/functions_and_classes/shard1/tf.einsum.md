@@ -26,6 +26,7 @@ equation by
 
 Many common operations can be expressed in this way.  For example:
 
+```python
 # Matrix multiplication
 >>> einsum('ij,jk->ik', m0, m1)  # output[i,k] = sum_j m0[i,j] * m1[j, k]
 
@@ -40,6 +41,7 @@ Many common operations can be expressed in this way.  For example:
 
 # Batch matrix multiplication
 >>> einsum('aij,ajk->aik', s, t)  # out[a,i,k] = sum_j s[a,i,j] * t[a, j, k]
+```
 
 This function behaves like `numpy.einsum`, but does not support:
 * Ellipses (subscripts like `ij...,jk...->ik...`)
@@ -52,12 +54,12 @@ This function behaves like `numpy.einsum`, but does not support:
 
 *  <b>`equation`</b>: a `str` describing the contraction, in the same format as
     `numpy.einsum`.
-*  <b>`inputs`</b>: the inputs to contract (each one an `Output`), whose shapes should
+*  <b>`inputs`</b>: the inputs to contract (each one a `Tensor`), whose shapes should
     be consistent with `equation`.
 
 ##### Returns:
 
-  The contracted `Output`, with shape determined by `equation`.
+  The contracted `Tensor`, with shape determined by `equation`.
 
 ##### Raises:
 

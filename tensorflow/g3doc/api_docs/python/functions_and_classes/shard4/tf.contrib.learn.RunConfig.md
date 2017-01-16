@@ -50,6 +50,13 @@ environment variable. See `ClusterConfig` for more details.
 
 - - -
 
+#### `tf.contrib.learn.RunConfig.environment` {#RunConfig.environment}
+
+
+
+
+- - -
+
 #### `tf.contrib.learn.RunConfig.evaluation_master` {#RunConfig.evaluation_master}
 
 
@@ -79,6 +86,20 @@ variable.
 
 - - -
 
+#### `tf.contrib.learn.RunConfig.keep_checkpoint_every_n_hours` {#RunConfig.keep_checkpoint_every_n_hours}
+
+
+
+
+- - -
+
+#### `tf.contrib.learn.RunConfig.keep_checkpoint_max` {#RunConfig.keep_checkpoint_max}
+
+
+
+
+- - -
+
 #### `tf.contrib.learn.RunConfig.master` {#RunConfig.master}
 
 
@@ -93,6 +114,27 @@ variable.
 
 - - -
 
+#### `tf.contrib.learn.RunConfig.save_checkpoints_secs` {#RunConfig.save_checkpoints_secs}
+
+
+
+
+- - -
+
+#### `tf.contrib.learn.RunConfig.save_checkpoints_steps` {#RunConfig.save_checkpoints_steps}
+
+
+
+
+- - -
+
+#### `tf.contrib.learn.RunConfig.save_summary_steps` {#RunConfig.save_summary_steps}
+
+
+
+
+- - -
+
 #### `tf.contrib.learn.RunConfig.task_id` {#RunConfig.task_id}
 
 
@@ -101,6 +143,20 @@ variable.
 - - -
 
 #### `tf.contrib.learn.RunConfig.task_type` {#RunConfig.task_type}
+
+
+
+
+- - -
+
+#### `tf.contrib.learn.RunConfig.tf_config` {#RunConfig.tf_config}
+
+
+
+
+- - -
+
+#### `tf.contrib.learn.RunConfig.tf_random_seed` {#RunConfig.tf_random_seed}
 
 
 

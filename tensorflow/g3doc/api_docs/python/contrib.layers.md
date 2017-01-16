@@ -38,7 +38,7 @@ It is assumed that the pooling is done per image but not in batch or channels.
 
 ##### Returns:
 
-  An `Output` representing the results of the pooling operation.
+  A `Tensor` representing the results of the pooling operation.
 
 ##### Raises:
 
@@ -78,7 +78,11 @@ can have speed penalty, specially in distributed settings.
     `batch_size`. The normalization is over all but the last dimension if
     `data_format` is `NHWC` and the second dimension if `data_format` is
     `NCHW`.
-*  <b>`decay`</b>: decay for the moving average.
+*  <b>`decay`</b>: decay for the moving average. Reasonable values for `decay` are close
+    to 1.0, typically in the multiple-nines range: 0.999, 0.99, 0.9, etc.
+    Lower `decay` value (recommend trying `decay`=0.9) if model experiences
+    reasonably good training performance but poor validation and/or test
+    performance. Try zero_debias_moving_mean=True for improved stability.
 *  <b>`center`</b>: If True, subtract `beta`. If False, `beta` is ignored.
 *  <b>`scale`</b>: If True, multiply by `gamma`. If False, `gamma` is
     not used. When the next layer is linear (also e.g. `nn.relu`), this can be
@@ -110,20 +114,21 @@ can have speed penalty, specially in distributed settings.
     example selection.)
 *  <b>`fused`</b>: Use nn.fused_batch_norm if True, nn.batch_normalization otherwise.
 *  <b>`data_format`</b>: A string. `NHWC` (default) and `NCHW` are supported.
+*  <b>`zero_debias_moving_mean`</b>: Use zero_debias for moving_mean. It creates a new
+    pair of variables 'moving_mean/biased' and 'moving_mean/local_step'.
 *  <b>`scope`</b>: Optional scope for `variable_scope`.
 
 ##### Returns:
 
-  An `Output` representing the output of the operation.
+  A `Tensor` representing the output of the operation.
 
 ##### Raises:
 
 
 *  <b>`ValueError`</b>: if `batch_weights` is not None and `fused` is True.
 *  <b>`ValueError`</b>: if `data_format` is neither `NHWC` nor `NCHW`.
-*  <b>`ValueError`</b>: if `data_format` is `NCHW` while `fused` is False.
 *  <b>`ValueError`</b>: if the rank of `inputs` is undefined.
-*  <b>`ValueError`</b>: if rank or last dimension of `inputs` is undefined.
+*  <b>`ValueError`</b>: if rank or channels dimension of `inputs` is undefined.
 
 
 - - -
@@ -136,7 +141,7 @@ It is required that 1 <= N <= 3.
 
 `convolution` creates a variable called `weights`, representing the
 convolutional kernel, that is convolved (actually cross-correlated) with the
-`inputs` to produce an `Output` of activations. If a `normalizer_fn` is
+`inputs` to produce a `Tensor` of activations. If a `normalizer_fn` is
 provided (such as `batch_norm`), it is then applied. Otherwise, if
 `normalizer_fn` is None and a `biases_initializer` is provided then a `biases`
 variable would be created and added the activations. Finally, if
@@ -253,7 +258,7 @@ operations such as image gradients:
 
 ##### Returns:
 
-  An `Output` representing the output of the operation.
+  A `Tensor` representing the output of the operation.
 
 
 - - -
@@ -269,7 +274,7 @@ second variable called 'biases' is added to the result of the operation.
 ##### Args:
 
 
-*  <b>`inputs`</b>: A 4-D `Output` of type `float` and shape
+*  <b>`inputs`</b>: A 4-D `Tensor` of type `float` and shape
     `[batch, height, width, in_channels]` for `NHWC` data format or
     `[batch, in_channels, height, width]` for `NCHW` data format.
 *  <b>`num_outputs`</b>: integer, the number of output filters.
@@ -333,7 +338,7 @@ Flattens the input while maintaining the batch_size.
 ##### Raises:
 
 
-*  <b>`ValueError`</b>: if inputs.shape is wrong.
+*  <b>`ValueError`</b>: if inputs.dense_shape is wrong.
 
 
 - - -
@@ -344,7 +349,7 @@ Adds a fully connected layer.
 
 `fully_connected` creates a variable called `weights`, representing a fully
 connected weight matrix, which is multiplied by the `inputs` to produce a
-`Output` of hidden units. If a `normalizer_fn` is provided (such as
+`Tensor` of hidden units. If a `normalizer_fn` is provided (such as
 `batch_norm`), it is then applied. Otherwise, if `normalizer_fn` is
 None and a `biases_initializer` is provided then a `biases` variable would be
 created and added the hidden units. Finally, if `activation_fn` is not `None`,
@@ -381,7 +386,7 @@ prior to the initial matrix multiply by `weights`.
 
 ##### Returns:
 
-   the tensor variable representing the result of the series of operations.
+   The tensor variable representing the result of the series of operations.
 
 ##### Raises:
 
@@ -422,7 +427,7 @@ Can be used as a normalizer function for conv2d and fully_connected.
 
 ##### Returns:
 
-  An `Output` representing the output of the operation.
+  A `Tensor` representing the output of the operation.
 
 ##### Raises:
 
@@ -457,7 +462,7 @@ It is assumed that the pooling is done per image but not in batch or channels.
 
 ##### Returns:
 
-  An `Output` representing the results of the pooling operation.
+  A `Tensor` representing the results of the pooling operation.
 
 ##### Raises:
 
@@ -510,7 +515,7 @@ layers are called with `scope='stack'`.
 ##### Args:
 
 
-*  <b>`inputs`</b>: An `Output` suitable for layer.
+*  <b>`inputs`</b>: A `Tensor` suitable for layer.
 *  <b>`repetitions`</b>: Int, number of repetitions.
 *  <b>`layer`</b>: A layer with arguments `(inputs, *args, **kwargs)`
 *  <b>`*args`</b>: Extra args for the layer.
@@ -607,6 +612,9 @@ to produce the end result.
 *  <b>`stride`</b>: a list of length 2: [stride_height, stride_width], specifying the
     depthwise convolution stride. Can be an int if both strides are the same.
 *  <b>`padding`</b>: one of 'VALID' or 'SAME'.
+*  <b>`rate`</b>: a list of length 2: [rate_height, rate_width], specifying the dilation
+    rates for a'trous convolution. Can be an int if both rates are the same.
+    If any value is larger than one, then both stride values need to be one.
 *  <b>`activation_fn`</b>: activation function, set to None to skip it and maintain
     a linear activation.
 *  <b>`normalizer_fn`</b>: normalization function to use instead of `biases`. If
@@ -628,54 +636,7 @@ to produce the end result.
 
 ##### Returns:
 
-  An `Output` representing the output of the operation.
-
-
-- - -
-
-### `tf.stack(values, axis=0, name='stack')` {#stack}
-
-Stacks a list of rank-`R` tensors into one rank-`(R+1)` tensor.
-
-Packs the list of tensors in `values` into a tensor with rank one higher than
-each tensor in `values`, by packing them along the `axis` dimension.
-Given a list of length `N` of tensors of shape `(A, B, C)`;
-
-if `axis == 0` then the `output` tensor will have the shape `(N, A, B, C)`.
-if `axis == 1` then the `output` tensor will have the shape `(A, N, B, C)`.
-Etc.
-
-For example:
-
-```prettyprint
-# 'x' is [1, 4]
-# 'y' is [2, 5]
-# 'z' is [3, 6]
-stack([x, y, z]) => [[1, 4], [2, 5], [3, 6]]  # Pack along first dim.
-stack([x, y, z], axis=1) => [[1, 2, 3], [4, 5, 6]]
-```
-
-This is the opposite of unstack.  The numpy equivalent is
-
-    tf.stack([x, y, z]) = np.asarray([x, y, z])
-
-##### Args:
-
-
-*  <b>`values`</b>: A list of `Output` objects with the same shape and type.
-*  <b>`axis`</b>: An `int`. The axis to stack along. Defaults to the first dimension.
-    Supports negative indexes.
-*  <b>`name`</b>: A name for this operation (optional).
-
-##### Returns:
-
-
-*  <b>`output`</b>: A stacked `Output` with the same type as `values`.
-
-##### Raises:
-
-
-*  <b>`ValueError`</b>: If `axis` is out of the range [-(R+1), R+1).
+  A `Tensor` representing the output of the operation.
 
 
 - - -
@@ -689,14 +650,14 @@ Note that the rank of `input` must be known.
 ##### Args:
 
 
-*  <b>`inputs`</b>: An `Output` of arbitrary size.
+*  <b>`inputs`</b>: A `Tensor` of arbitrary size.
 *  <b>`dim`</b>: The dimension along which the input is normalized.
 *  <b>`epsilon`</b>: A small value to add to the inputs to avoid dividing by zero.
 *  <b>`scope`</b>: Optional scope for variable_scope.
 
 ##### Returns:
 
-  The normalized `Output`.
+  The normalized `Tensor`.
 
 ##### Raises:
 
@@ -707,6 +668,9 @@ Note that the rank of `input` must be known.
 
 Aliases for fully_connected which set a default activation function are
 available: `relu`, `relu6` and `linear`.
+
+`stack` operation is also available. It builds a stack of layers by applying
+a layer repeatedly.
 
 ## Regularizers
 
@@ -728,9 +692,9 @@ subtraction, it usually shouldn't hurt much either.
 ##### Args:
 
 
-*  <b>`regularizer`</b>: A function that takes a single `Output` argument and returns
-    a scalar `Output` output.
-*  <b>`weights_list`</b>: List of weights `Output`s or `Variables` to apply
+*  <b>`regularizer`</b>: A function that takes a single `Tensor` argument and returns
+    a scalar `Tensor` output.
+*  <b>`weights_list`</b>: List of weights `Tensors` or `Variables` to apply
     `regularizer` over. Defaults to the `GraphKeys.WEIGHTS` collection if
     `None`.
 
@@ -756,7 +720,7 @@ L1 regularization encourages sparsity.
 ##### Args:
 
 
-*  <b>`scale`</b>: A scalar multiplier `Output`. 0.0 disables the regularizer.
+*  <b>`scale`</b>: A scalar multiplier `Tensor`. 0.0 disables the regularizer.
 *  <b>`scope`</b>: An optional scope name.
 
 ##### Returns:
@@ -780,7 +744,7 @@ Small values of L2 can help prevent overfitting the training data.
 ##### Args:
 
 
-*  <b>`scale`</b>: A scalar multiplier `Output`. 0.0 disables the regularizer.
+*  <b>`scale`</b>: A scalar multiplier `Tensor`. 0.0 disables the regularizer.
 *  <b>`scope`</b>: An optional scope name.
 
 ##### Returns:
@@ -953,7 +917,7 @@ Various ways of passing optimizers, include:
 
 - string, name of the optimizer like 'SGD', 'Adam', see OPTIMIZER_CLS_NAMES
     for full list. E.g. `optimize_loss(..., optimizer='Adam')`.
-- function, takes learning rate `Output` as argument and must return
+- function, takes learning rate `Tensor` as argument and must return
     `Optimizer` instance. E.g. `optimize_loss(...,
     optimizer=lambda lr: tf.train.MomentumOptimizer(lr, momentum=0.5))`.
   Alternatively, if `learning_rate` is `None`, the function takes no
@@ -968,13 +932,13 @@ Various ways of passing optimizers, include:
 ##### Args:
 
 
-*  <b>`loss`</b>: Scalar `Output`.
-*  <b>`global_step`</b>: Scalar int `Output`, step counter for each update. If not
+*  <b>`loss`</b>: Scalar `Tensor`.
+*  <b>`global_step`</b>: Scalar int `Tensor`, step counter for each update. If not
                supplied, it will be fetched from the default graph (see
                `tf.contrib.framework.get_global_step` for details). If it's
                not been created, no step will be incremented with each weight
                update. `learning_rate_decay_fn` requires `global_step`.
-*  <b>`learning_rate`</b>: float or `Output`, magnitude of update per each training
+*  <b>`learning_rate`</b>: float or `Tensor`, magnitude of update per each training
                  step. Can be `None`.
 *  <b>`optimizer`</b>: string, class or optimizer instance, used as trainer.
              string should be name of optimizer, like 'SGD',
@@ -995,7 +959,7 @@ Various ways of passing optimizers, include:
     This callable takes a `list` of `(gradients, variables)` `tuple`s and
     returns the same thing with the gradients modified.
 *  <b>`learning_rate_decay_fn`</b>: function, takes `learning_rate` and `global_step`
-                          `Output`s, returns `Output`.
+                          `Tensor`s, returns `Tensor`.
                           Can be used to implement any learning rate decay
                           functions.
                           For example: `tf.train.exponential_decay`.
@@ -1205,7 +1169,7 @@ Creates a _CrossedColumn for performing feature crosses.
 *  <b>`ckpt_to_load_from`</b>: (Optional). String representing checkpoint name/pattern
     to restore the column weights. Required if `tensor_name_in_ckpt` is not
     None.
-*  <b>`tensor_name_in_ckpt`</b>: (Optional). Name of the `Output` in the provided
+*  <b>`tensor_name_in_ckpt`</b>: (Optional). Name of the `Tensor` in the provided
     checkpoint from which to restore the column weights. Required if
     `ckpt_to_load_from` is not None.
 *  <b>`hash_key`</b>: Specify the hash_key that will be used by the `FingerprintCat64`
@@ -1228,7 +1192,7 @@ Creates a _CrossedColumn for performing feature crosses.
 
 - - -
 
-### `tf.contrib.layers.embedding_column(sparse_id_column, dimension, combiner=None, initializer=None, ckpt_to_load_from=None, tensor_name_in_ckpt=None)` {#embedding_column}
+### `tf.contrib.layers.embedding_column(sparse_id_column, dimension, combiner=None, initializer=None, ckpt_to_load_from=None, tensor_name_in_ckpt=None, max_norm=None)` {#embedding_column}
 
 Creates an `_EmbeddingColumn` for feeding sparse data into a DNN.
 
@@ -1253,9 +1217,11 @@ Creates an `_EmbeddingColumn` for feeding sparse data into a DNN.
 *  <b>`ckpt_to_load_from`</b>: (Optional). String representing checkpoint name/pattern
     to restore the column weights. Required if `tensor_name_in_ckpt` is not
     None.
-*  <b>`tensor_name_in_ckpt`</b>: (Optional). Name of the `Output` in the provided
+*  <b>`tensor_name_in_ckpt`</b>: (Optional). Name of the `Tensor` in the provided
     checkpoint from which to restore the column weights. Required if
     `ckpt_to_load_from` is not None.
+*  <b>`max_norm`</b>: (Optional). If not None, embedding values are l2-normalized to
+    the value of max_norm.
 
 ##### Returns:
 
@@ -1264,12 +1230,25 @@ Creates an `_EmbeddingColumn` for feeding sparse data into a DNN.
 
 - - -
 
-### `tf.contrib.layers.hashed_embedding_column(column_name, size, dimension, combiner=None, initializer=None)` {#hashed_embedding_column}
+### `tf.contrib.layers.scattered_embedding_column(column_name, size, dimension, hash_key, combiner=None, initializer=None)` {#scattered_embedding_column}
 
 Creates an embedding column of a sparse feature using parameter hashing.
 
 The i-th embedding component of a value v is found by retrieving an
 embedding weight whose index is a fingerprint of the pair (v,i).
+
+An embedding column with sparse_column_with_hash_bucket such as
+  embedding_column(
+      sparse_column_with_hash_bucket(column_name, bucket_size),
+      dimension)
+
+could be replaced by
+  scattered_embedding_column(
+      column_name, size=bucket_size * dimension, dimension=dimension,
+      hash_key=tf.contrib.layers.SPARSE_FEATURE_CROSS_DEFAULT_HASH_KEY)
+
+for the same number of embedding parameters and hopefully reduced impact of
+collisions with a cost of slowing down training.
 
 ##### Args:
 
@@ -1277,6 +1256,8 @@ embedding weight whose index is a fingerprint of the pair (v,i).
 *  <b>`column_name`</b>: A string defining sparse column name.
 *  <b>`size`</b>: An integer specifying the number of parameters in the embedding layer.
 *  <b>`dimension`</b>: An integer specifying dimension of the embedding.
+*  <b>`hash_key`</b>: Specify the hash_key that will be used by the `FingerprintCat64`
+    function to combine the crosses fingerprints on SparseFeatureCrossOp.
 *  <b>`combiner`</b>: A string specifying how to reduce if there are multiple entries
     in a single row. Currently "mean", "sqrtn" and "sum" are supported. Each
     of this can be thought as example level normalizations on the column:
@@ -1290,7 +1271,7 @@ embedding weight whose index is a fingerprint of the pair (v,i).
 
 ##### Returns:
 
-  A _HashedEmbeddingColumn.
+  A _ScatteredEmbeddingColumn.
 
 ##### Raises:
 
@@ -1487,7 +1468,7 @@ my_features = [embedding_feature_b, real_feature_buckets, embedding_feature_a]
 
 ##### Returns:
 
-  A `dict` mapping FeatureColumn to `Output` and `SparseTensor` values.
+  A `dict` mapping FeatureColumn to `Tensor` and `SparseTensor` values.
 
 
 - - -
@@ -1516,9 +1497,9 @@ Parses tf.SequenceExamples to extract tensors for given `FeatureColumn`s.
   A tuple consisting of:
 
 *  <b>`context_features`</b>: a dict mapping `FeatureColumns` from
-    `context_feature_columns` to their parsed `Output`s/`SparseTensor`s.
+    `context_feature_columns` to their parsed `Tensors`/`SparseTensor`s.
 *  <b>`sequence_features`</b>: a dict mapping `FeatureColumns` from
-    `sequence_feature_columns` to their parsed `Output`s/`SparseTensor`s.
+    `sequence_feature_columns` to their parsed `Tensors`/`SparseTensor`s.
 
 
 - - -
@@ -1532,21 +1513,26 @@ Creates a `_RealValuedColumn` for dense numeric data.
 
 *  <b>`column_name`</b>: A string defining real valued column name.
 *  <b>`dimension`</b>: An integer specifying dimension of the real valued column.
-    The default is 1. The Tensor representing the _RealValuedColumn
-    will have the shape of [batch_size, dimension].
+    The default is 1. When dimension is not None, the Tensor representing
+    the _RealValuedColumn will have the shape of [batch_size, dimension].
+    A None dimension means the feature column should be treat as variable
+    length and will be parsed as a `SparseTensor`.
 *  <b>`default_value`</b>: A single value compatible with dtype or a list of values
     compatible with dtype which the column takes on during tf.Example parsing
-    if data is missing. If None, then tf.parse_example will fail if an example
-    does not contain this column. If a single value is provided, the same
-    value will be applied as the default value for every dimension. If a
-    list of values is provided, the length of the list should be equal to the
-    value of `dimension`.
+    if data is missing. When dimension is not None, a default value of None
+    will cause tf.parse_example to fail if an example does not contain this
+    column. If a single value is provided, the same value will be applied as
+    the default value for every dimension. If a list of values is provided,
+    the length of the list should be equal to the value of `dimension`.
+    Only scalar default value is supported in case dimension is not specified.
 *  <b>`dtype`</b>: defines the type of values. Default value is tf.float32. Must be a
     non-quantized, real integer or floating point type.
 *  <b>`normalizer`</b>: If not None, a function that can be used to normalize the value
     of the real valued column after default_value is applied for parsing.
     Normalizer function takes the input tensor as its argument, and returns
-    the output tensor. (e.g. lambda x: (x - 3.0) / 4.2).
+    the output tensor. (e.g. lambda x: (x - 3.0) / 4.2). Note that for
+    variable length columns, the normalizer should expect an input_tensor of
+    type `SparseTensor`.
 
 ##### Returns:
 
@@ -1565,7 +1551,7 @@ Creates a `_RealValuedColumn` for dense numeric data.
 
 - - -
 
-### `tf.contrib.layers.shared_embedding_columns(sparse_id_columns, dimension, combiner=None, shared_embedding_name=None, initializer=None, ckpt_to_load_from=None, tensor_name_in_ckpt=None)` {#shared_embedding_columns}
+### `tf.contrib.layers.shared_embedding_columns(sparse_id_columns, dimension, combiner=None, shared_embedding_name=None, initializer=None, ckpt_to_load_from=None, tensor_name_in_ckpt=None, max_norm=None)` {#shared_embedding_columns}
 
 Creates a list of `_EmbeddingColumn` sharing the same embedding.
 
@@ -1593,9 +1579,11 @@ Creates a list of `_EmbeddingColumn` sharing the same embedding.
 *  <b>`ckpt_to_load_from`</b>: (Optional). String representing checkpoint name/pattern
     to restore the column weights. Required if `tensor_name_in_ckpt` is not
     None.
-*  <b>`tensor_name_in_ckpt`</b>: (Optional). Name of the `Output` in the provided
+*  <b>`tensor_name_in_ckpt`</b>: (Optional). Name of the `Tensor` in the provided
     checkpoint from which to restore the column weights. Required if
     `ckpt_to_load_from` is not None.
+*  <b>`max_norm`</b>: (Optional). If not None, embedding values are l2-normalized to
+    the value of max_norm.
 
 ##### Returns:
 
@@ -1734,7 +1722,7 @@ Example:
       is a SparseTensor.
    Following are assumed to be true:
      * sparse_tensor.indices = weights_tensor.indices
-     * sparse_tensor.shape = weights_tensor.shape
+     * sparse_tensor.dense_shape = weights_tensor.dense_shape
 
 ##### Args:
 
@@ -1780,7 +1768,8 @@ Example:
       columns_to_tensors=columns_to_tensor,
       feature_columns=feature_columns,
       num_outputs=1)
-  loss = tf.nn.sigmoid_cross_entropy_with_logits(logits, labels)
+  loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=labels,
+                                                 logits=logits)
   ```
 
 ##### Args:

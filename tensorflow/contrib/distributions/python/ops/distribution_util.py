@@ -32,6 +32,7 @@ from tensorflow.python.framework import tensor_util
 from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import check_ops
 from tensorflow.python.ops import control_flow_ops
+from tensorflow.python.ops import control_flow_ops
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import nn
 
@@ -41,8 +42,8 @@ def assert_close(
   """Assert that that x and y are within machine epsilon of each other.
 
   Args:
-    x: Numeric `Output`
-    y: Numeric `Output`
+    x: Numeric `Tensor`
+    y: Numeric `Tensor`
     data: The tensors to print out if the condition is `False`. Defaults to
       error message and first few entries of `x` and `y`.
     summarize: Print this many entries of each tensor.
@@ -79,7 +80,7 @@ def assert_integer_form(
   """Assert that x has integer components (or floats equal to integers).
 
   Args:
-    x: Numeric `Output`
+    x: Numeric `Tensor`
     data: The tensors to print out if the condition is `False`. Defaults to
       error message and first few entries of `x` and `y`.
     summarize: Print this many entries of each tensor.
@@ -104,14 +105,44 @@ def assert_symmetric(matrix):
       [check_ops.assert_equal(matrix, matrix_t)], matrix)
 
 
+def same_dynamic_shape(a, b):
+  """Returns whether a and b have the same dynamic shape.
+
+  Args:
+    a: `Tensor`
+    b: `Tensor`
+
+  Returns:
+    `Boolean` `Tensor` representing if both tensors have the same shape.
+  """
+  a = ops.convert_to_tensor(a, name="a")
+  b = ops.convert_to_tensor(b, name="b")
+
+  # One of the shapes isn't fully defined, so we need to use the dynamic
+  # shape.
+  return control_flow_ops.cond(
+      math_ops.equal(array_ops.rank(a), array_ops.rank(b)),
+      # Here we can't just do math_ops.equal(a.shape, b.shape), since
+      # static shape inference may break the equality comparison between
+      # shape(a) and shape(b) in math_ops.equal.
+      lambda: math_ops.reduce_all(math_ops.equal(
+          array_ops.concat((
+              array_ops.shape(a),
+              array_ops.shape(b)), 0),
+          array_ops.concat((
+              array_ops.shape(b),
+              array_ops.shape(a)), 0))),
+      lambda: constant_op.constant(False))
+
+
 def get_logits_and_prob(
     logits=None, p=None,
     multidimensional=False, validate_args=False, name="GetLogitsAndProb"):
   """Converts logits to probabilities and vice-versa, and returns both.
 
   Args:
-    logits: Numeric `Output` representing log-odds.
-    p: Numeric `Output` representing probabilities.
+    logits: Numeric `Tensor` representing log-odds.
+    p: Numeric `Tensor` representing probabilities.
     multidimensional: `Boolean`, default `False`.
       If `True`, represents whether the last dimension of `logits` or `p`,
       a [N1, N2, ... k] dimensional tensor, represent the
@@ -185,14 +216,14 @@ def log_combinations(n, counts, name="log_combinations"):
   where `i` runs over all `k` classes.
 
   Args:
-    n: Numeric `Output` broadcastable with `counts`. This represents `n`
+    n: Numeric `Tensor` broadcastable with `counts`. This represents `n`
       outcomes.
-    counts: Numeric `Output` broadcastable with `n`. This represents counts
+    counts: Numeric `Tensor` broadcastable with `n`. This represents counts
       in `k` classes, where `k` is the last dimension of the tensor.
     name: A name for this operation (optional).
 
   Returns:
-    `Output` representing the multinomial coefficient between `n` and `counts`.
+    `Tensor` representing the multinomial coefficient between `n` and `counts`.
   """
   # First a bit about the number of ways counts could have come in:
   # E.g. if counts = [1, 2], then this is 3 choose 2.
@@ -247,16 +278,16 @@ def matrix_diag_transform(matrix, transform=None, name=None):
   ```
 
   Args:
-    matrix:  Rank `R` `Output`, `R >= 2`, where the last two dimensions are
+    matrix:  Rank `R` `Tensor`, `R >= 2`, where the last two dimensions are
       equal.
-    transform:  Element-wise function mapping `Output`s to `Output`s.  To
+    transform:  Element-wise function mapping `Tensors` to `Tensors`.  To
       be applied to the diagonal of `matrix`.  If `None`, `matrix` is returned
       unchanged.  Defaults to `None`.
     name:  A name to give created ops.
       Defaults to "matrix_diag_transform".
 
   Returns:
-    An `Output` with same shape and `dtype` as `matrix`.
+    A `Tensor` with same shape and `dtype` as `matrix`.
   """
   with ops.name_scope(name, "matrix_diag_transform", [matrix]):
     matrix = ops.convert_to_tensor(matrix, name="matrix")
@@ -295,13 +326,13 @@ def rotate_transpose(x, shift, name="rotate_transpose"):
     ```
 
   Args:
-    x: `Output`.
-    shift: `Output`. Number of dimensions to transpose left (shift<0) or
+    x: `Tensor`.
+    shift: `Tensor`. Number of dimensions to transpose left (shift<0) or
       transpose right (shift>0).
     name: `String`. The name to give this op.
 
   Returns:
-    rotated_x: Input `Output` with dimensions circularly rotated by shift.
+    rotated_x: Input `Tensor` with dimensions circularly rotated by shift.
 
   Raises:
     TypeError: if shift is not integer type.
@@ -335,12 +366,12 @@ def rotate_transpose(x, shift, name="rotate_transpose"):
       # Finally, we transform shift by modulo length so it can be specified
       # independently from the array upon which it operates (like python).
       ndims = array_ops.rank(x)
-      shift = math_ops.select(math_ops.less(shift, 0),
+      shift = array_ops.where(math_ops.less(shift, 0),
                               math_ops.mod(-shift, ndims),
                               ndims - math_ops.mod(shift, ndims))
       first = math_ops.range(0, shift)
       last = math_ops.range(shift, ndims)
-      perm = array_ops.concat(0, (last, first))
+      perm = array_ops.concat((last, first), 0)
       return array_ops.transpose(x, perm=perm)
 
 
@@ -348,18 +379,18 @@ def pick_vector(cond,
                 true_vector,
                 false_vector,
                 name="pick_vector"):
-  """Picks possibly different length row `Output`s based on condition.
+  """Picks possibly different length row `Tensor`s based on condition.
 
-  Value `Output`s should have exactly one dimension.
+  Value `Tensor`s should have exactly one dimension.
 
   If `cond` is a python Boolean or `tf.constant` then either `true_vector` or
   `false_vector` is immediately returned. I.e., no graph nodes are created and
   no validation happens.
 
   Args:
-    cond: `Output`. Must have `dtype=tf.bool` and be scalar.
-    true_vector: `Output` of one dimension. Returned when cond is `True`.
-    false_vector: `Output` of one dimension. Returned when cond is `False`.
+    cond: `Tensor`. Must have `dtype=tf.bool` and be scalar.
+    true_vector: `Tensor` of one dimension. Returned when cond is `True`.
+    false_vector: `Tensor` of one dimension. Returned when cond is `False`.
     name: `String`. The name to give this op.
 
   Example:
@@ -372,7 +403,7 @@ def pick_vector(cond,
   ```
 
   Returns:
-    true_or_false_vector: `Output`.
+    true_or_false_vector: `Tensor`.
 
   Raises:
     TypeError: if `cond.dtype != tf.bool`
@@ -395,17 +426,17 @@ def pick_vector(cond,
           % (true_vector.name, true_vector.dtype,
              false_vector.name, false_vector.dtype))
     n = array_ops.shape(true_vector)[0]
-    return array_ops.slice(array_ops.concat(0, (true_vector, false_vector)),
-                           [math_ops.select(cond, 0, n)],
-                           [math_ops.select(cond, n, -1)])
+    return array_ops.slice(
+        array_ops.concat((true_vector, false_vector), 0),
+        [array_ops.where(cond, 0, n)], [array_ops.where(cond, n, -1)])
 
 
 def gen_new_seed(seed, salt):
   """Generate a new seed, from the given seed and salt."""
-  if seed:
-    string = (str(seed) + salt).encode("utf-8")
-    return int(hashlib.md5(string).hexdigest()[:8], 16) & 0x7FFFFFFF
-  return None
+  if seed is None:
+    return None
+  string = (str(seed) + salt).encode("utf-8")
+  return int(hashlib.md5(string).hexdigest()[:8], 16) & 0x7FFFFFFF
 
 
 def fill_lower_triangular(x, validate_args=False, name="fill_lower_triangular"):
@@ -439,14 +470,14 @@ def fill_lower_triangular(x, validate_args=False, name="fill_lower_triangular"):
   `distribution_util_test.py`, function `_fill_lower_triangular`.
 
   Args:
-    x: `Output` representing lower triangular elements.
+    x: `Tensor` representing lower triangular elements.
     validate_args: `Boolean`, default `False`.  Whether to ensure the shape of
       `x` can be mapped to a lower triangular matrix (controls non-static checks
       only).
     name: `String`. The name to give this op.
 
   Returns:
-    tril: `Output` with lower triangular elements filled from `x`.
+    tril: `Tensor` with lower triangular elements filled from `x`.
 
   Raises:
     ValueError: if shape if `x` has static shape which cannot be mapped to a
@@ -518,15 +549,16 @@ def fill_lower_triangular(x, validate_args=False, name="fill_lower_triangular"):
     batch_ids = math_ops.range(m)
 
     # Assemble the tril_ids into batch,tril_id pairs.
-    idx = array_ops.pack([
-        array_ops.tile(array_ops.expand_dims(batch_ids, 1), [1, n*n]),
-        array_ops.tile(array_ops.expand_dims(tril_ids(n), 0), [m, 1])])
+    idx = array_ops.stack([
+        array_ops.tile(array_ops.expand_dims(batch_ids, 1), [1, n * n]),
+        array_ops.tile(array_ops.expand_dims(tril_ids(n), 0), [m, 1])
+    ])
     idx = array_ops.transpose(idx, [1, 2, 0])
 
     # Gather up, reshape, and return.
     y = array_ops.reshape(x, [-1, d])
     y = array_ops.gather_nd(y, idx)
-    y = array_ops.reshape(y, array_ops.concat(0, [batch_shape, [n, n]]))
+    y = array_ops.reshape(y, array_ops.concat([batch_shape, [n, n]], 0))
     y = array_ops.matrix_band_part(y, -1, 0)
     y.set_shape(y.get_shape().merge_with(final_shape))
     return y
@@ -578,8 +610,8 @@ class AppendDocstring(object):
         if "\n" in value:
           raise ValueError(
               "Parameter description for \"%s\" contains newlines." % key)
-        bullets.append("*  <b>`%s`</b>: %s" % (key, value))
-      self._additional_note += ("\n\n##### <b>`condition_kwargs`</b>:\n\n" +
+        bullets.append("*  `%s`: %s" % (key, value))
+      self._additional_note += ("\n\n##### `condition_kwargs`:\n\n" +
                                 "\n".join(bullets))
 
   def __call__(self, fn):

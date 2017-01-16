@@ -326,13 +326,13 @@ def gradients(ys,
               aggregation_method=None):
   """Constructs symbolic partial derivatives of sum of `ys` w.r.t. x in `xs`.
 
-  `ys` and `xs` are each an `Output` or a list of tensors.  `grad_ys`
-  is a list of `Output`, holding the gradients received by the
+  `ys` and `xs` are each a `Tensor` or a list of tensors.  `grad_ys`
+  is a list of `Tensor`, holding the gradients received by the
   `ys`. The list must be the same length as `ys`.
 
   `gradients()` adds ops to the graph to output the partial
   derivatives of `ys` with respect to `xs`.  It returns a list of
-  `Output` of length `len(xs)` where each tensor is the `sum(dy/dx)`
+  `Tensor` of length `len(xs)` where each tensor is the `sum(dy/dx)`
   for y in `ys`.
 
   `grad_ys` is a list of tensors of the same length as `ys` that holds
@@ -344,9 +344,9 @@ def gradients(ys,
   each y).
 
   Args:
-    ys: An `Output` or list of tensors to be differentiated.
-    xs: An `Output` or list of tensors to be used for differentiation.
-    grad_ys: Optional. An `Output` or list of tensors the same size as
+    ys: A `Tensor` or list of tensors to be differentiated.
+    xs: A `Tensor` or list of tensors to be used for differentiation.
+    grad_ys: Optional. A `Tensor` or list of tensors the same size as
       `ys` and holding the gradients computed for each y in `ys`.
     name: Optional name to use for grouping all the gradient ops together.
       defaults to 'gradients'.
@@ -770,11 +770,12 @@ def _AggregatedGrads(grads, op, loop_state, aggregation_method=None):
         # Form IndexedSlices out of the concatenated values and
         # indices.
         out_grads[i] = ops.IndexedSlices(
-            array_ops.concat(0, [x.values for x in out_grad]),
-            array_ops.concat(0, [x.indices for x in out_grad]),
+            array_ops.concat([x.values for x in out_grad], 0),
+            array_ops.concat([x.indices for x in out_grad], 0),
             out_grad[0].dense_shape)
-    else:
-      out_grads[i] = []
+    else:  # not out_grad
+      # out_grads[i] is [], thus its aggregation is simply None.
+      out_grads[i] = None
   return out_grads
 
 
@@ -823,7 +824,7 @@ def _hessian_vector_product(ys, xs, v):
 
   assert len(grads) == length
   elemwise_products = [
-      math_ops.mul(grad_elem, array_ops.stop_gradient(v_elem))
+      math_ops.multiply(grad_elem, array_ops.stop_gradient(v_elem))
       for grad_elem, v_elem in zip(grads, v) if grad_elem is not None
   ]
 
@@ -836,7 +837,7 @@ def hessians(ys, xs, name="hessians", colocate_gradients_with_ops=False,
   """Constructs the Hessian of sum of `ys` with respect to `x` in `xs`.
 
   `hessians()` adds ops to the graph to output the Hessian matrix of `ys`
-  with respect to `xs`.  It returns a list of `Output` of length `len(xs)`
+  with respect to `xs`.  It returns a list of `Tensor` of length `len(xs)`
   where each tensor is the Hessian of `sum(ys)`. This function currently
   only supports evaluating the Hessian with respect to (a list of) one-
   dimensional tensors.
@@ -845,8 +846,8 @@ def hessians(ys, xs, name="hessians", colocate_gradients_with_ops=False,
   tensor (see https://en.wikipedia.org/wiki/Hessian_matrix for more details).
 
   Args:
-    ys: An `Output` or list of tensors to be differentiated.
-    xs: An `Output` or list of tensors to be used for differentiation.
+    ys: A `Tensor` or list of tensors to be differentiated.
+    xs: A `Tensor` or list of tensors to be used for differentiation.
     name: Optional name to use for grouping all the gradient ops together.
       defaults to 'hessians'.
     colocate_gradients_with_ops: See `gradients()` documentation for details.
@@ -886,10 +887,10 @@ def hessians(ys, xs, name="hessians", colocate_gradients_with_ops=False,
       _gradients = gradients(ys, x, **kwargs)[0]
       # Unpack the gradients into a list so we can take derivatives with
       # respect to each element
-      _gradients = array_ops.unpack(_gradients)
+      _gradients = array_ops.unstack(_gradients)
     with ops.name_scope(name + '_second_derivative'):
       # Compute the partial derivatives with respect to each element of the list
       _hess = [gradients(_gradient, x, **kwargs)[0] for _gradient in _gradients]
       # Pack the list into a matrix and add to the list of hessians
-      hessians.append(array_ops.pack(_hess, name=name))
+      hessians.append(array_ops.stack(_hess, name=name))
   return hessians
