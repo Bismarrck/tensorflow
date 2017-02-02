@@ -76,11 +76,11 @@ def tf_workspace(path_prefix = "", tf_repo_name = ""):
   native.new_http_archive(
       name = "libxsmm_archive",
       urls = [
-          "http://bazel-mirror.storage.googleapis.com/github.com/hfp/libxsmm/archive/1.6.5.tar.gz",
-          "https://github.com/hfp/libxsmm/archive/1.6.5.tar.gz",
+          "http://bazel-mirror.storage.googleapis.com/github.com/hfp/libxsmm/archive/1.7.tar.gz",
+          "https://github.com/hfp/libxsmm/archive/1.7.tar.gz",
       ],
-      sha256 = "5231419a8e13e7a6d286cf25d32a3aa75c443a625e5ea57024d36468bc3d5936",
-      strip_prefix = "libxsmm-1.6.5",
+      sha256 = "2eea65624a697e74b939511cd2a686b4c957e90c99be168fe134d96771e811ad",
+      strip_prefix = "libxsmm-1.7",
       build_file = str(Label("//third_party:libxsmm.BUILD")),
   )
 
@@ -125,14 +125,15 @@ def tf_workspace(path_prefix = "", tf_repo_name = ""):
       actual = "@farmhash//:farmhash",
   )
 
-  native.http_archive(
+  native.new_http_archive(
       name = "highwayhash",
       urls = [
-          "http://bazel-mirror.storage.googleapis.com/github.com/google/highwayhash/archive/4bce8fc6a9ca454d9d377dbc4c4d33488bbab78f.tar.gz",
-          "https://github.com/google/highwayhash/archive/4bce8fc6a9ca454d9d377dbc4c4d33488bbab78f.tar.gz",
+          "http://bazel-mirror.storage.googleapis.com/github.com/google/highwayhash/archive/dfcb97ca4fe9277bf9dc1802dd979b071896453b.tar.gz",
+          "https://github.com/google/highwayhash/archive/dfcb97ca4fe9277bf9dc1802dd979b071896453b.tar.gz",
       ],
-      sha256 = "b159a62fb05e5f6a6be20aa0df6a951ebf44a7bb96ed2e819e4e35e17f56854d",
-      strip_prefix = "highwayhash-4bce8fc6a9ca454d9d377dbc4c4d33488bbab78f",
+      sha256 = "0f30a15b1566d93f146c8d149878a06e91d9bb7ec2cfd76906df62a82be4aac9",
+      strip_prefix = "highwayhash-dfcb97ca4fe9277bf9dc1802dd979b071896453b",
+      build_file = str(Label("//third_party:highwayhash.BUILD")),
   )
 
   native.new_http_archive(
@@ -193,7 +194,7 @@ def tf_workspace(path_prefix = "", tf_repo_name = ""):
   )
 
   native.new_http_archive(
-      name = "werkzeug",
+      name = "org_pocoo_werkzeug",
       urls = [
           "http://bazel-mirror.storage.googleapis.com/pypi.python.org/packages/b7/7f/44d3cfe5a12ba002b253f6985a4477edfa66da53787a2a838a40f6415263/Werkzeug-0.11.10.tar.gz",
           "https://pypi.python.org/packages/b7/7f/44d3cfe5a12ba002b253f6985a4477edfa66da53787a2a838a40f6415263/Werkzeug-0.11.10.tar.gz",
@@ -329,11 +330,11 @@ def tf_workspace(path_prefix = "", tf_repo_name = ""):
   temp_workaround_http_archive(
       name = "llvm",
       urls = [
-          "http://bazel-mirror.storage.googleapis.com/github.com/llvm-mirror/llvm/archive/4e9e4f277ad254e02a0cff33c61cd827e600da62.tar.gz",
-          "https://github.com/llvm-mirror/llvm/archive/4e9e4f277ad254e02a0cff33c61cd827e600da62.tar.gz",
+          "http://bazel-mirror.storage.googleapis.com/github.com/llvm-mirror/llvm/archive/2276fd31f36aa58f39397c435a8be6632d8c8505.tar.gz",
+          "https://github.com/llvm-mirror/llvm/archive/2276fd31f36aa58f39397c435a8be6632d8c8505.tar.gz",
       ],
-      sha256 = "ec67c57dfd85c2bb857fd13011c5c2aa3f1dc9f40c0a5bac13e78e76d6b61aa6",
-      strip_prefix = "llvm-4e9e4f277ad254e02a0cff33c61cd827e600da62",
+      sha256 = "0e08c91752732227280466d12f330a5854569deddf28ff4a6c3898334dbb0d16",
+      strip_prefix = "llvm-2276fd31f36aa58f39397c435a8be6632d8c8505",
       build_file = str(Label("//third_party/llvm:llvm.BUILD")),
       repository = tf_repo_name,
   )
@@ -394,6 +395,14 @@ def tf_workspace(path_prefix = "", tf_repo_name = ""):
   native.bind(
       name = "zlib",
       actual = "@zlib_archive//:zlib",
+  )
+
+  native.new_http_archive(
+      name = "nccl_archive",
+      url = "https://github.com/NVIDIA/nccl/archive/2a974f5ca2aa12b178046b2206b43f1fd69d9fae.tar.gz",
+      sha256 = "d6aa1a3f20ae85358890d9a96f49c51a75baa1d3af3598501f29ff9ef8a3107d",
+      strip_prefix = "nccl-2a974f5ca2aa12b178046b2206b43f1fd69d9fae",
+      build_file = str(Label("//third_party:nccl.BUILD")),
   )
 
   # Make junit-4.12 available as //external:junit
