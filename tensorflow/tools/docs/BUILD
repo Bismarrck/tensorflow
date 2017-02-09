@@ -52,6 +52,7 @@ py_test(
         "parser_test.py",
     ],
     srcs_version = "PY2AND3",
+    tags = ["manual"],
     deps = [
         ":parser",
         "//tensorflow/python:platform_test",
@@ -78,9 +79,20 @@ py_test(
         "generate_test.py",
     ],
     srcs_version = "PY2AND3",
+    tags = ["manual"],
     deps = [
         ":generate",
         "//tensorflow/python:platform_test",
+    ],
+)
+
+py_binary(
+    name = "make_py_guides",
+    srcs = ["make_py_guides.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        "//tensorflow/tools/docs:generate",
+        "//tensorflow/tools/docs:parser",
     ],
 )
 

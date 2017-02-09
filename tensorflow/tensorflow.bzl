@@ -20,6 +20,11 @@ load(
     "cuda_default_copts"
 )
 
+load(
+    "//third_party/mkl:build_defs.bzl",
+    "if_mkl",
+)
+
 # List of proto files for android builds
 def tf_android_core_proto_sources(core_proto_sources_relative):
   return ["//tensorflow/core:" + p
@@ -97,8 +102,9 @@ def tf_copts():
            "-Wno-sign-compare",
            "-fno-exceptions",] +
           if_cuda(["-DGOOGLE_CUDA=1"]) +
+          if_mkl(["-DINTEL_MKL=1"]) +
           if_android_arm(["-mfpu=neon"]) +
-          if_x86(["-msse4.1"]) +
+          if_x86(["-msse3"]) +
           select({
               "//tensorflow:android": [
                   "-std=c++11",
@@ -112,7 +118,7 @@ def tf_copts():
                 "/DPLATFORM_WINDOWS",
                 "/DEIGEN_HAS_C99_MATH",
                 "/DTENSORFLOW_USE_EIGEN_THREADPOOL",
-		"/DEIGEN_VECTORIZE_SSE3",  # To flush denormals without __SSE3__ set.
+                "/DEIGEN_VECTORIZE_SSE3",  # To flush denormals without __SSE3__ set.
               ],
               "//tensorflow:ios": ["-std=c++11"],
               "//conditions:default": ["-pthread"]}))
@@ -255,7 +261,7 @@ def tf_gen_op_wrappers_cc(name,
                     ]),
                     copts=tf_copts(),
                     alwayslink=1,
-                    visibility=["//visibility:private"])
+                    visibility=["//tensorflow:internal"])
 
 # Invoke this rule in .../tensorflow/python to build the wrapper library.
 def tf_gen_op_wrapper_py(name, out=None, hidden=None, visibility=None, deps=[],
@@ -377,6 +383,10 @@ def tf_cc_tests(srcs, deps, name='', linkstatic=0, tags=[], size="medium",
         args=args,
         linkopts=linkopts)
 
+def tf_cc_test_mkl(srcs, deps, name='', linkstatic=0, tags=[], size="medium",
+                    args=None):
+  tf_cc_tests(srcs, deps, linkstatic, tags=tags, size=size, args=args)
+
 def tf_cc_tests_gpu(srcs, deps, name='', linkstatic=0, tags=[], size="medium",
                     args=None):
   tf_cc_tests(srcs, deps, linkstatic, tags=tags, size=size, args=args)
@@ -465,7 +475,7 @@ def tf_cuda_library(deps=None, cuda_deps=None, copts=None, **kwargs):
           "//tensorflow/core:cuda",
           "@local_config_cuda//cuda:cuda_headers"
       ]),
-      copts = copts + if_cuda(["-DGOOGLE_CUDA=1"]),
+      copts = copts + if_cuda(["-DGOOGLE_CUDA=1"]) + if_mkl(["-DINTEL_MKL=1"]),
       **kwargs)
 
 def tf_kernel_library(name, prefix=None, srcs=None, gpu_srcs=None, hdrs=None,

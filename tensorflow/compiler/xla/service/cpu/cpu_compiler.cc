@@ -256,10 +256,13 @@ Status CpuCompiler::RunHloPasses(HloModule* hlo_module,
 
 namespace {
 
+// Align buffers to 16-byte boundaries.
+constexpr int64 kMemoryAlignment = 16;
+
 llvm::TargetOptions CompilerTargetOptions(
-    const CompilationOptions& compilation_options) {
+    const HloModuleConfig& execution_options) {
   llvm::TargetOptions target_options;
-  llvm_ir::SetTargetOptions(compilation_options, &target_options);
+  llvm_ir::SetTargetOptions(execution_options, &target_options);
   return target_options;
 }
 
@@ -291,9 +294,8 @@ StatusOr<std::unique_ptr<Executable>> CpuCompiler::Compile(
   auto llvm_context = MakeUnique<llvm::LLVMContext>();
   auto llvm_module =
       MakeUnique<llvm::Module>("__compute_module", *llvm_context);
-  auto jit = MakeUnique<SimpleOrcJIT>(
-      CompilerTargetOptions(module_config->compilation_options()),
-      CodeGenOptLevel());
+  auto jit = MakeUnique<SimpleOrcJIT>(CompilerTargetOptions(*module_config),
+                                      CodeGenOptLevel());
   llvm_module->setDataLayout(jit->data_layout());
   llvm_module->setTargetTriple(jit->target_triple().getTriple());
   const llvm::DataLayout& data_layout = llvm_module->getDataLayout();
@@ -323,7 +325,7 @@ StatusOr<std::unique_ptr<Executable>> CpuCompiler::Compile(
         std::unique_ptr<BufferAssignment> assignment,
         BufferAssigner::Run(hlo_module.get(),
                             MakeUnique<DependencyHloOrdering>(hlo_module.get()),
-                            pointer_size));
+                            pointer_size, kMemoryAlignment));
 
     // If we are using the parallel CPU backend, we need to create map from
     // HloInstruction to the corresponding generated function name.
@@ -349,7 +351,8 @@ StatusOr<std::unique_ptr<Executable>> CpuCompiler::Compile(
       }
       // The parallel preparation should have ensured that the top-level
       // computation consists solely of Call instructions.
-      TF_RET_CHECK(instruction->opcode() == HloOpcode::kCall);
+      TF_RET_CHECK(instruction->opcode() == HloOpcode::kCall)
+          << hlo_module->ToString();
       HloComputation* to_apply = instruction->to_apply();
       parallel_computations.emplace(to_apply, instruction);
     }
@@ -415,7 +418,7 @@ StatusOr<std::unique_ptr<Executable>> CpuCompiler::Compile(
         BufferAssigner::Run(hlo_module.get(),
                             MakeUnique<SequentialHloOrdering>(hlo_module.get(),
                                                               module_sequence),
-                            pointer_size));
+                            pointer_size, kMemoryAlignment));
 
     // Each computation is a single function.  Emit all embedded computations
     // before the entry computation. The order of computations returned from
@@ -480,16 +483,14 @@ CpuCompiler::CompileAheadOfTime(
   TF_RET_CHECK(!hlo_modules.empty());
 
   // We can pass just one llvm::TargetOptions when we compile the LLVM module,
-  // so we bail if the configs have conflicting flags.
+  // so we bail if the configs have conflicting flags. At the moment, the only
+  // flag that needs to be consistent is fast-math.
+  bool fast_math_disabled = module_configs[0]->fast_math_disabled();
   for (const auto& module_config : module_configs) {
-    const auto& options0 = module_configs[0]->compilation_options();
-    const auto& options1 = module_config->compilation_options();
-    if (!protobuf_util::ProtobufEquals(options0, options1)) {
+    if (module_config->fast_math_disabled() != fast_math_disabled) {
       return InvalidArgument(
-          "All HLO module configs must have matching compilation options. "
-          "[%s] vs [%s]",
-          options0.ShortDebugString().c_str(),
-          options1.ShortDebugString().c_str());
+          "All HLO module configs must have the same value for "
+          "fast_math_disabled.");
     }
   }
 
@@ -544,8 +545,8 @@ CpuCompiler::CompileAheadOfTime(
   std::unique_ptr<llvm::TargetMachine> target_machine =
       WrapUnique(target->createTargetMachine(
           triple.getTriple(), cpu_name, features,
-          CompilerTargetOptions(module_configs[0]->compilation_options()),
-          reloc_model, llvm::CodeModel::Default, opt_level));
+          CompilerTargetOptions(*module_configs[0]), reloc_model,
+          llvm::CodeModel::Default, opt_level));
 
   // Compile must be thread-safe so create a new LLVM context for the module.
   llvm::LLVMContext llvm_context;
@@ -577,11 +578,11 @@ CpuCompiler::CompileAheadOfTime(
 
     // Run buffer analysis on the HLO graph. This analysis figures out which
     // temporary buffers are required to run the computation.
-    TF_ASSIGN_OR_RETURN(
-        std::unique_ptr<BufferAssignment> assignment,
-        BufferAssigner::Run(hlo_module, MakeUnique<SequentialHloOrdering>(
-                                            hlo_module, module_sequence),
-                            pointer_size));
+    TF_ASSIGN_OR_RETURN(std::unique_ptr<BufferAssignment> assignment,
+                        BufferAssigner::Run(hlo_module,
+                                            MakeUnique<SequentialHloOrdering>(
+                                                hlo_module, module_sequence),
+                                            pointer_size, kMemoryAlignment));
 
     IrEmitter ir_emitter(*hlo_module, *module_config, *assignment, &llvm_module,
                          /*hlo_to_profile_idx=*/nullptr);
@@ -630,12 +631,12 @@ CpuCompiler::CompileAheadOfTime(
       buffer_sizes.push_back(allocation.size());
     }
 
-    TF_ASSIGN_OR_RETURN(const BufferAllocation* result_allocation,
-                        assignment->GetUniqueTopLevelOutputAllocation());
+    TF_ASSIGN_OR_RETURN(const BufferAllocation::Slice result_slice,
+                        assignment->GetUniqueTopLevelOutputSlice());
 
     results.emplace_back(MakeUnique<CpuAotCompilationResult>(
         std::move(object_file_data), std::move(buffer_sizes),
-        result_allocation->index()));
+        result_slice.index()));
   }
   return std::move(results);
 }

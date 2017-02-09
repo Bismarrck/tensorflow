@@ -18,11 +18,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import ast
 import functools
 import inspect
 import os
 import re
 
+import codegen
+import six
 
 # A regular expression capturing a python indentifier.
 IDENTIFIER_RE = '[a-zA-Z_][a-zA-Z0-9_]*'
@@ -34,8 +37,7 @@ def documentation_path(full_name):
   Given the fully qualified name of a library symbol, compute the path to which
   to write the documentation for that symbol (relative to a base directory).
   Documentation files are organized into directories that mirror the python
-  module/class structure. The path for the top-level module (whose full name is
-  '') is 'index.md'.
+  module/class structure.
 
   Args:
     full_name: Fully qualified name of a library symbol.
@@ -43,12 +45,7 @@ def documentation_path(full_name):
   Returns:
     The file path to which to write the documentation for `full_name`.
   """
-  # The main page is special, since it has no name in here.
-  if not full_name:
-    dirs = ['index']
-  else:
-    dirs = full_name.split('.')
-
+  dirs = full_name.split('.')
   return os.path.join(*dirs) + '.md'
 
 
@@ -106,13 +103,11 @@ def _markdown_link(link_text, ref_full_name, relative_path_to_root,
   This function returns a Markdown link. It is assumed that this is a code
   reference, so the link text will always be rendered as code (using backticks).
 
-  `link_text` should refer to a library symbol. You can either refer to it with
-  or without the `tf.` prefix.
+  `link_text` should refer to a library symbol, starting with 'tf.'.
 
   Args:
     link_text: The text of the Markdown link.
-    ref_full_name: The fully qualified name of the symbol to link to
-      (may optionally include 'tf.').
+    ref_full_name: The fully qualified name of the symbol to link to.
     relative_path_to_root: The relative path from the location of the current
       document to the root of the API documentation.
     duplicate_of: A map from duplicate full names to master names.
@@ -121,9 +116,6 @@ def _markdown_link(link_text, ref_full_name, relative_path_to_root,
     A markdown link from the documentation page of `from_full_name`
     to the documentation page of `ref_full_name`.
   """
-  if ref_full_name.startswith('tf.'):
-    ref_full_name = ref_full_name[3:]
-
   return '[`%s`](%s)' % (
       link_text,
       _reference_to_link(ref_full_name, relative_path_to_root, duplicate_of))
@@ -153,17 +145,11 @@ def replace_references(string, relative_path_to_root, duplicate_of):
   """
   full_name_re = '%s(.%s)*' % (IDENTIFIER_RE, IDENTIFIER_RE)
   symbol_reference_re = re.compile(r'@\{(' + full_name_re + r')\}')
-  match = symbol_reference_re.search(string)
-  while match:
-    symbol_name = match.group(1)
-    link_text = _markdown_link(symbol_name, symbol_name,
-                               relative_path_to_root, duplicate_of)
-
-    # Remove only the '@symbol' part of the match, and replace with the link.
-    string = string[:match.start()] + link_text + string[match.end():]
-    match = symbol_reference_re.search(string,
-                                       pos=match.start() + len(link_text))
-  return string
+  return re.sub(symbol_reference_re,
+                lambda match: _markdown_link(match.group(1), match.group(1),  # pylint: disable=g-long-lambda
+                                             relative_path_to_root,
+                                             duplicate_of),
+                string)
 
 
 def _md_docstring(py_object, relative_path_to_root, duplicate_of):
@@ -280,7 +266,12 @@ def _get_arg_spec(func):
     return inspect.getargspec(func)
 
 
-def _generate_signature(func):
+def _remove_first_line_indent(string):
+  indent = len(re.match(r'^\s*', string).group(0))
+  return '\n'.join([line[indent:] for line in string.split('\n')])
+
+
+def _generate_signature(func, reverse_index):
   """Given a function, returns a string representing its args.
 
   This function produces a string representing the arguments to a python
@@ -296,8 +287,8 @@ def _generate_signature(func):
   document, it should be typeset as code (using backticks), or escaped.
 
   Args:
-    func: A function of method to extract the signature for (anything
-      `inspect.getargspec` will accept).
+    func: A function, method, or functools.partial to extract the signature for.
+    reverse_index: A map from object ids to canonical full names to use.
 
   Returns:
     A string representing the signature of `func` as python code.
@@ -313,7 +304,9 @@ def _generate_signature(func):
       len(argspec.args or []) - len(argspec.defaults or []))
 
   # Python documentation skips `self` when printing method signatures.
-  first_arg = 1 if inspect.ismethod(func) and 'self' in argspec.args[:1] else 0
+  # Note we cannot test for ismethod here since unbound methods do not register
+  # as methods (in Python 3).
+  first_arg = 1 if 'self' in argspec.args[:1] else 0
 
   # Add all args without defaults.
   for arg in argspec.args[first_arg:first_arg_with_default]:
@@ -321,14 +314,42 @@ def _generate_signature(func):
 
   # Add all args with defaults.
   if argspec.defaults:
-    for arg, default in zip(
-        argspec.args[first_arg_with_default:], argspec.defaults):
-      # Some callables don't have __name__, fall back to including their repr.
-      # TODO(wicke): This could be improved at least for common cases.
-      if callable(default) and hasattr(default, '__name__'):
-        args_list.append('%s=%s' % (arg, default.__name__))
+    source = _remove_first_line_indent(inspect.getsource(func))
+    func_ast = ast.parse(source)
+    ast_defaults = func_ast.body[0].args.defaults
+
+    for arg, default, ast_default in zip(
+        argspec.args[first_arg_with_default:], argspec.defaults, ast_defaults):
+      if id(default) in reverse_index:
+        default_text = reverse_index[id(default)]
       else:
-        args_list.append('%s=%r' % (arg, default))
+        default_text = codegen.to_source(ast_default)
+        if default_text != repr(default):
+          # This may be an internal name. If so, handle the ones we know about.
+          # TODO(wicke): This should be replaced with a lookup in the index.
+          # TODO(wicke): (replace first ident with tf., check if in index)
+          internal_names = {
+              'ops.GraphKeys': 'tf.GraphKeys',
+              '_ops.GraphKeys': 'tf.GraphKeys',
+              'init_ops.zeros_initializer': 'tf.zeros_initializer',
+              'init_ops.ones_initializer': 'tf.ones_initializer',
+              'saver_pb2.SaverDef': 'tf.SaverDef',
+          }
+          full_name_re = '^%s(.%s)+' % (IDENTIFIER_RE, IDENTIFIER_RE)
+          match = re.match(full_name_re, default_text)
+          if match:
+            lookup_text = default_text
+            for internal_name, public_name in six.iteritems(internal_names):
+              if match.group(0).startswith(internal_name):
+                lookup_text = public_name + default_text[len(internal_name):]
+                break
+            if default_text is lookup_text:
+              print('Using default arg, failed lookup: %s, repr: %r' % (
+                  default_text, default))
+            else:
+              default_text = lookup_text
+
+      args_list.append('%s=%s' % (arg, default_text))
 
   # Add *args and *kwargs.
   if argspec.varargs:
@@ -340,7 +361,7 @@ def _generate_signature(func):
 
 
 def _generate_markdown_for_function(full_name, duplicate_names,
-                                    function, duplicate_of):
+                                    function, duplicate_of, reverse_index):
   """Generate Markdown docs for a function or method.
 
   This function creates a documentation page for a function. It uses the
@@ -355,6 +376,7 @@ def _generate_markdown_for_function(full_name, duplicate_names,
     function: The python object referenced by `full_name`.
     duplicate_of: A map of duplicate full names to master names. Used to resolve
       @{symbol} references in the docstring.
+    reverse_index: A map from object ids in the index to full names.
 
   Returns:
     A string that can be written to a documentation file for this function.
@@ -363,7 +385,7 @@ def _generate_markdown_for_function(full_name, duplicate_names,
   relative_path = os.path.relpath(
       os.path.dirname(documentation_path(full_name)) or '.', '.')
   docstring = _md_docstring(function, relative_path, duplicate_of)
-  signature = _generate_signature(function)
+  signature = _generate_signature(function, reverse_index)
 
   if duplicate_names:
     aliases = '\n'.join(['### `%s`' % (name + signature)
@@ -376,7 +398,7 @@ def _generate_markdown_for_function(full_name, duplicate_names,
 
 
 def _generate_markdown_for_class(full_name, duplicate_names, py_class,
-                                 duplicate_of, index, tree):
+                                 duplicate_of, index, tree, reverse_index):
   """Generate Markdown docs for a class.
 
   This function creates a documentation page for a class. It uses the
@@ -395,6 +417,7 @@ def _generate_markdown_for_class(full_name, duplicate_names, py_class,
       @{symbol} references in the docstrings.
     index: A map from full names to python object references.
     tree: A map from full names to the names of all documentable child objects.
+    reverse_index: A map from object ids in the index to full names.
 
   Returns:
     A string that can be written to a documentation file for this class.
@@ -444,7 +467,8 @@ def _generate_markdown_for_class(full_name, duplicate_names, py_class,
   if methods:
     docs += '## Methods\n\n'
     for method_name, method in sorted(methods, key=lambda x: x[0]):
-      method_signature = method_name + _generate_signature(method)
+      method_signature = method_name + _generate_signature(method,
+                                                           reverse_index)
       docs += '### `%s`\n\n%s\n\n' % (method_signature,
                                       _md_docstring(method, relative_path,
                                                     duplicate_of))
@@ -498,15 +522,24 @@ def _generate_markdown_for_module(full_name, duplicate_names, module,
     member_full_name = full_name + '.' + name if full_name else name
     member = index[member_full_name]
 
+    suffix = ''
     if inspect.isclass(member):
       link_text = 'class ' + name
     elif inspect.isfunction(member):
-      link_text = name + _generate_signature(member)
-    else:
+      link_text = name + '(...)'
+    elif inspect.ismodule(member):
       link_text = name
+      suffix = ' module'
+    else:
+      member_links.append('Constant ' + name)
+      continue
+
+    brief_docstring = _get_brief_docstring(member)
+    if brief_docstring:
+      suffix = '%s: %s' % (suffix, brief_docstring)
 
     member_links.append(_markdown_link(link_text, member_full_name,
-                                       relative_path, duplicate_of))
+                                       relative_path, duplicate_of) + suffix)
 
   # TODO(deannarubin): Make this list into a table and add the brief docstring.
   # (use _get_brief_docstring)
@@ -515,9 +548,13 @@ def _generate_markdown_for_module(full_name, duplicate_names, module,
       full_name, aliases, docstring, '\n\n'.join(member_links))
 
 
+_CODE_URL_PREFIX = (
+    'https://www.tensorflow.org/code/')
+
+
 def generate_markdown(full_name, py_object,
                       duplicate_of, duplicates,
-                      index, tree, base_dir):
+                      index, tree, reverse_index, base_dir):
   """Generate Markdown docs for a given object that's part of the TF API.
 
   This function uses _md_docstring to obtain the docs pertaining to
@@ -534,7 +571,7 @@ def generate_markdown(full_name, py_object,
   The output is Markdown that can be written to file and published.
 
   Args:
-    full_name: The fully qualified name (excl. "tf.") of the symbol to be
+    full_name: The fully qualified name of the symbol to be
       documented.
     py_object: The Python object to be documented. Its documentation is sourced
       from `py_object`'s docstring.
@@ -548,6 +585,7 @@ def generate_markdown(full_name, py_object,
       of "@{symbol}" references.
     tree: A `dict` mapping a fully qualified name to the names of all its
       members. Used to populate the members section of a class or module page.
+    reverse_index: A `dict` mapping objects in the index to full names.
     base_dir: A base path that is stripped from file locations written to the
       docs.
 
@@ -568,11 +606,12 @@ def generate_markdown(full_name, py_object,
       # Some methods in classes from extensions come in as routines.
       inspect.isroutine(py_object)):
     markdown = _generate_markdown_for_function(master_name, duplicate_names,
-                                               py_object, duplicate_of)
+                                               py_object, duplicate_of,
+                                               reverse_index)
   elif inspect.isclass(py_object):
     markdown = _generate_markdown_for_class(master_name, duplicate_names,
                                             py_object, duplicate_of,
-                                            index, tree)
+                                            index, tree, reverse_index)
   elif inspect.ismodule(py_object):
     markdown = _generate_markdown_for_module(master_name, duplicate_names,
                                              py_object, duplicate_of,
@@ -592,15 +631,15 @@ def generate_markdown(full_name, py_object,
 
     # Never include links outside this code base.
     if not path.startswith('..'):
-      # TODO(wicke): Make this a link to github.
-      markdown += '\n\ndefined in %s\n\n' % path
+      markdown += '\n\nDefined in [`%s`](%s%s).\n\n' % (
+          path, _CODE_URL_PREFIX, path)
   except TypeError:  # getfile throws TypeError if py_object is a builtin.
-    markdown += '\n\nthis is an alias for a Python built-in.'
+    markdown += '\n\nThis is an alias for a Python built-in.'
 
   return markdown
 
 
-def generate_global_index(library_name, root_name, index, duplicate_of):
+def generate_global_index(library_name, index, duplicate_of):
   """Given a dict of full names to python objects, generate an index page.
 
   The index page generated contains a list of links for all symbols in `index`
@@ -608,7 +647,6 @@ def generate_global_index(library_name, root_name, index, duplicate_of):
 
   Args:
     library_name: The name for the documented library to use in the title.
-    root_name: The name to use for the root module.
     index: A dict mapping full names to python objects.
     duplicate_of: A map of duplicate names to preferred names.
 
@@ -616,10 +654,18 @@ def generate_global_index(library_name, root_name, index, duplicate_of):
     A string containing an index page as Markdown.
   """
   symbol_links = []
-  for full_name, py_object in index.iteritems():
-    index_name = full_name or root_name
+  for full_name, py_object in six.iteritems(index):
     if (inspect.ismodule(py_object) or inspect.isfunction(py_object) or
         inspect.isclass(py_object)):
+      # In Python 3, unbound methods are functions, so eliminate those.
+      if inspect.isfunction(py_object):
+        if full_name.count('.') == 0:
+          parent_name = ''
+        else:
+          parent_name = full_name[:full_name.rfind('.')]
+        if parent_name in index and inspect.isclass(index[parent_name]):
+          # Skip methods (=functions with class parents).
+          continue
       symbol_links.append((index_name,
                            _markdown_link(index_name, full_name,
                                           '.', duplicate_of)))

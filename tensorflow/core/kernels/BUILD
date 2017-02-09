@@ -7,9 +7,9 @@
 # append "_gpu" to the test name to invoke the GPU benchmarks.  Example:
 #
 #   # for CPU tests
-#   $ bazel test -c opt --copt=-mavx //third_party/tensorflow/core/kernels:my_op_test
+#   $ bazel test --config opt //third_party/tensorflow/core/kernels:my_op_test
 #   # for GPU benchmarks
-#   $ bazel run -c opt --copt=-mavx --config=cuda //third_party/tensorflow/core/kernels:my_op_test_gpu -- --benchmarks=..
+#   $ bazel run --config opt --config=cuda //third_party/tensorflow/core/kernels:my_op_test_gpu -- --benchmarks=..
 #
 package(default_visibility = ["//visibility:public"])
 
@@ -2615,6 +2615,7 @@ tf_cuda_cc_test(
         ":ops_testutil",
         ":ops_util",
         "//tensorflow/cc:cc_ops",
+        "//tensorflow/cc:cc_ops_internal",
         "//tensorflow/core:core_cpu",
         "//tensorflow/core:core_cpu_internal",
         "//tensorflow/core:framework",
@@ -3767,6 +3768,7 @@ filegroup(
             "decode_gif_op.*",
             "identity_reader_op.*",
             "reader_base.*",
+            "remote_fused_graph_execute_op.*",
             "fixed_length_record_reader_op.*",
             "whole_file_read_ops.*",
             "sample_distorted_bounding_box_op.*",
@@ -4033,12 +4035,20 @@ cc_binary(
         "notap",
     ],
     deps = [
-        ":android_tensorflow_kernels",
         "//tensorflow/cc:cc_ops",
         "//tensorflow/cc:client_session",
-        "//tensorflow/core:android_tensorflow_lib",
-        "//tensorflow/core:android_tensorflow_test_lib",
-    ],
+    ] + select({
+        "//tensorflow:android": [
+            ":android_tensorflow_kernels",
+            "//tensorflow/core:android_tensorflow_lib",
+            "//tensorflow/core:android_tensorflow_test_lib",
+        ],
+        "//conditions:default": [
+            "//tensorflow/core:framework",
+            "//tensorflow/core:tensor_testutil",
+            "//tensorflow/core:test_main",
+        ],
+    }),
 )
 
 tf_cc_test(
@@ -4161,11 +4171,20 @@ cc_binary(
         "notap",
     ],
     deps = [
-        ":android_tensorflow_kernels",
         "//tensorflow/cc:cc_ops",
         "//tensorflow/cc:client_session",
-        "//tensorflow/core:android_tensorflow_test_lib",
-    ],
+    ] + select({
+        "//tensorflow:android": [
+            ":android_tensorflow_kernels",
+            "//tensorflow/core:android_tensorflow_lib",
+            "//tensorflow/core:android_tensorflow_test_lib",
+        ],
+        "//conditions:default": [
+            "//tensorflow/core:framework",
+            "//tensorflow/core:tensor_testutil",
+            "//tensorflow/core:test_main",
+        ],
+    }),
 )
 
 tf_cc_test(
@@ -4183,6 +4202,50 @@ tf_cc_test(
         "//tensorflow/core:framework",
         "//tensorflow/core:lib",
         "//tensorflow/core:protos_all_cc",
+        "//tensorflow/core:test",
+        "//tensorflow/core:test_main",
+        "//tensorflow/core:testlib",
+    ],
+)
+
+tf_kernel_library(
+    name = "remote_fused_graph_ops",
+    prefix = "remote_fused_graph_ops",
+    deps = [
+        ":remote_fused_graph_execute_op",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:remote_fused_graph_ops_op_lib",
+        "//tensorflow/core/kernels/hexagon:graph_transferer",
+    ],
+)
+
+cc_library(
+    name = "remote_fused_graph_execute_op",
+    srcs = ["remote_fused_graph_execute_op.cc"],
+    deps = [
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:lib_internal",
+        "//tensorflow/core/kernels/hexagon:graph_transferer",
+    ],
+)
+
+tf_cc_test(
+    name = "remote_fused_graph_ops_test",
+    size = "small",
+    srcs = [
+        "remote_fused_graph_execute_op_test.cc",
+    ],
+    deps = [
+        ":ops_testutil",
+        ":ops_util",
+        ":remote_fused_graph_execute_op",
+        "//tensorflow/core:core_cpu",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:protos_all_cc",
+        "//tensorflow/core:remote_fused_graph_ops_op_lib",
         "//tensorflow/core:test",
         "//tensorflow/core:test_main",
         "//tensorflow/core:testlib",
