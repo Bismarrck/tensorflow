@@ -27,6 +27,7 @@ import numpy as np
 from werkzeug import test as werkzeug_test
 from werkzeug import wrappers
 
+from tensorflow.core.framework import types_pb2
 from tensorflow.core.util import event_pb2
 from tensorflow.python import pywrap_tensorflow
 from tensorflow.python.platform import test
@@ -55,7 +56,7 @@ class DebuggerPluginTest(test.TestCase):
             op_name='layers/Matmul',
             output_slot=1,
             wall_time=43,
-            step=3,
+            step=7,
             list_of_values=[4, 5, 6]))
     writer.WriteEvent(
         self._CreateEventWithDebugNumericSummary(
@@ -89,13 +90,15 @@ class DebuggerPluginTest(test.TestCase):
     writer.Close()
 
     # Start a server that will receive requests and respond with health pills.
-    multiplexer = event_multiplexer.EventMultiplexer({
+    self.multiplexer = event_multiplexer.EventMultiplexer({
         '.': self.log_dir,
         'run_foo': run_foo_directory,
     })
-    self.plugin = debugger_plugin.DebuggerPlugin(multiplexer)
+    self.plugin = debugger_plugin.DebuggerPlugin()
     wsgi_app = application.TensorBoardWSGIApp(
-        self.log_dir, {'debugger': self.plugin}, multiplexer, reload_interval=0)
+        self.log_dir, {'debugger': self.plugin},
+        self.multiplexer,
+        reload_interval=0)
     self.server = werkzeug_test.Client(wsgi_app, wrappers.BaseResponse)
 
   def tearDown(self):
@@ -121,6 +124,7 @@ class DebuggerPluginTest(test.TestCase):
         tag='__health_pill__',
         node_name='%s:%d:DebugNumericSummary' % (op_name, output_slot))
     value.tensor.tensor_shape.dim.add(size=len(list_of_values))
+    value.tensor.dtype = types_pb2.DT_DOUBLE
     value.tensor.tensor_content = np.array(
         list_of_values, dtype=np.float64).tobytes()
     return event
@@ -138,8 +142,7 @@ class DebuggerPluginTest(test.TestCase):
 
   def testHealthPillsRouteProvided(self):
     """Tests that the plugin offers the route for requesting health pills."""
-    unused_run_paths = {}
-    apps = self.plugin.get_plugin_apps(unused_run_paths, self.log_dir)
+    apps = self.plugin.get_plugin_apps(self.multiplexer, self.log_dir)
     self.assertIn('/health_pills', apps)
     self.assertIsInstance(apps['/health_pills'], collections.Callable)
 
@@ -222,6 +225,63 @@ class DebuggerPluginTest(test.TestCase):
         })
     self.assertEqual(400, response.status_code)
 
+  def testFetchHealthPillsForSpecificStep(self):
+    """Tests that requesting health pills at a specific steps works.
+
+    This path may be slow in real life because it reads from disk.
+    """
+    # Request health pills for these nodes at step 7 specifically.
+    response = self.server.post(
+        '/data/plugin/debugger/health_pills',
+        data={
+            'node_names': json.dumps(['logits/Add', 'layers/Matmul']),
+            'step': 7
+        })
+    self.assertEqual(200, response.status_code)
+    # The response should only include health pills at step 7.
+    self.assertDictEqual({
+        'logits/Add': [
+            {
+                'wall_time': 1337,
+                'step': 7,
+                'node_name': 'logits/Add',
+                'output_slot': 0,
+                'value': [7, 8, 9],
+            },
+        ],
+        'layers/Matmul': [
+            {
+                'wall_time': 43,
+                'step': 7,
+                'node_name': 'layers/Matmul',
+                'output_slot': 1,
+                'value': [4, 5, 6],
+            },
+        ],
+    }, self._DeserializeResponse(response.get_data()))
+
+  def testNoHealthPillsForSpecificStep(self):
+    """Tests that an empty mapping is returned for no health pills at a step."""
+    response = self.server.post(
+        '/data/plugin/debugger/health_pills',
+        data={
+            'node_names': json.dumps(['some/clearly/non-existent/op']),
+            'step': 7
+        })
+    self.assertEqual(200, response.status_code)
+    self.assertDictEqual({}, self._DeserializeResponse(response.get_data()))
+
+  def testNoHealthPillsForOutOfRangeStep(self):
+    """Tests that an empty mapping is returned for an out of range step."""
+    response = self.server.post(
+        '/data/plugin/debugger/health_pills',
+        data={
+            'node_names': json.dumps(['logits/Add', 'layers/Matmul']),
+            # This step higher than that of any event written to disk.
+            'step': 42424242
+        })
+    self.assertEqual(200, response.status_code)
+    self.assertDictEqual({}, self._DeserializeResponse(response.get_data()))
 
 if __name__ == '__main__':
   test.main()
