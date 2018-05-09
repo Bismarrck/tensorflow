@@ -31,7 +31,7 @@ from tensorflow.python.framework import ops
 from tensorflow.python.framework import sparse_tensor
 from tensorflow.python.framework import test_util
 from tensorflow.python.ops import array_ops
-from tensorflow.python.ops import data_flow_ops
+from tensorflow.python.ops import lookup_ops
 from tensorflow.python.ops import variables
 from tensorflow.python.platform import test
 from tensorflow.python.training import saver
@@ -57,6 +57,12 @@ class HashTableOpTest(test.TestCase):
 
       result = output.eval()
       self.assertAllEqual([0, 1, -1], result)
+
+      exported_keys_tensor, exported_values_tensor = table.export()
+
+      self.assertItemsEqual([b"brain", b"salad", b"surgery"],
+                            exported_keys_tensor.eval())
+      self.assertItemsEqual([0, 1, 2], exported_values_tensor.eval())
 
   def testHashTableFindHighRank(self):
     with self.test_session():
@@ -125,7 +131,7 @@ class HashTableOpTest(test.TestCase):
       table3 = lookup.HashTable(
           lookup.KeyValueTensorInitializer(keys, values), default_val)
 
-      data_flow_ops.tables_initializer().run()
+      lookup_ops.tables_initializer().run()
       self.assertAllEqual(3, table1.size().eval())
       self.assertAllEqual(3, table2.size().eval())
       self.assertAllEqual(3, table3.size().eval())
@@ -186,6 +192,11 @@ class HashTableOpTest(test.TestCase):
       table = lookup.HashTable(
           lookup.KeyValueTensorInitializer(keys, values), default_val)
       table.init.run()
+
+      # Ref types do not produce a lookup signature mismatch.
+      input_string_ref = variables.Variable("brain")
+      variables.global_variables_initializer().run()
+      self.assertEqual(0, table.lookup(input_string_ref).eval())
 
       input_string = constant_op.constant([1, 2, 3], dtypes.int64)
       with self.assertRaises(TypeError):
@@ -629,6 +640,17 @@ class MutableHashTableOpTest(test.TestCase):
       table.insert(keys, values).run()
       self.assertAllEqual(3, table.size().eval())
 
+      input_string_ref = variables.Variable("brain")
+      input_int64_ref = variables.Variable(-1, dtype=dtypes.int64)
+      variables.global_variables_initializer().run()
+
+      # Ref types do not produce an insert signature mismatch.
+      table.insert(input_string_ref, input_int64_ref).run()
+      self.assertAllEqual(3, table.size().eval())
+
+      # Ref types do not produce a lookup signature mismatch.
+      self.assertEqual(-1, table.lookup(input_string_ref).eval())
+
       # lookup with keys of the wrong type
       input_string = constant_op.constant([1, 2, 3], dtypes.int64)
       with self.assertRaises(TypeError):
@@ -654,7 +676,25 @@ class MutableHashTableOpTest(test.TestCase):
       output = table.lookup(input_string)
 
       result = output.eval()
-      self.assertAllClose([0, 1.1, -1.5], result)
+      self.assertAllClose([0, 1.1, default_val], result)
+
+  def testMutableHashTableIntFloat(self):
+    with self.test_session():
+      default_val = -1.0
+      keys = constant_op.constant([3, 7, 0], dtypes.int64)
+      values = constant_op.constant([7.5, -1.2, 9.9], dtypes.float32)
+      table = lookup.MutableHashTable(dtypes.int64, dtypes.float32,
+                                      default_val)
+      self.assertAllEqual(0, table.size().eval())
+
+      table.insert(keys, values).run()
+      self.assertAllEqual(3, table.size().eval())
+
+      input_string = constant_op.constant([7, 0, 11], dtypes.int64)
+      output = table.lookup(input_string)
+
+      result = output.eval()
+      self.assertAllClose([-1.2, 9.9, default_val], result)
 
   def testMutableHashTableInt64String(self):
     with self.test_session():
@@ -1166,8 +1206,38 @@ class IndexTableFromFile(test.TestCase):
       ids = table.lookup(constant_op.constant(["salad", "surgery", "tarkus"]))
 
       self.assertRaises(errors_impl.OpError, ids.eval)
-      data_flow_ops.tables_initializer().run()
+      lookup_ops.tables_initializer().run()
       self.assertAllEqual((1, 2, 3), ids.eval())
+
+  def test_string_index_table_from_file_tensor_filename(self):
+    vocabulary_file = self._createVocabFile("f2i_vocab1.txt")
+    with self.test_session():
+      vocabulary_file = constant_op.constant(vocabulary_file)
+      table = lookup.index_table_from_file(
+          vocabulary_file=vocabulary_file, num_oov_buckets=1)
+      ids = table.lookup(constant_op.constant(["salad", "surgery", "tarkus"]))
+
+      self.assertRaises(errors_impl.OpError, ids.eval)
+      lookup_ops.tables_initializer().run()
+      self.assertAllEqual((1, 2, 3), ids.eval())
+      self.assertEqual(1,
+                       len(ops.get_collection(ops.GraphKeys.ASSET_FILEPATHS)))
+
+  def test_string_index_table_from_file_placeholder_filename(self):
+    vocabulary_file = self._createVocabFile("f2i_vocab1.txt")
+    with self.test_session():
+      vocabulary_placeholder = array_ops.placeholder(dtypes.string, [])
+      table = lookup.index_table_from_file(
+          vocabulary_file=vocabulary_placeholder, num_oov_buckets=1)
+      ids = table.lookup(constant_op.constant(["salad", "surgery", "tarkus"]))
+
+      self.assertRaises(errors_impl.OpError, ids.eval)
+
+      feed_dict = {vocabulary_placeholder.name: vocabulary_file}
+      lookup_ops.tables_initializer().run(feed_dict=feed_dict)
+      self.assertAllEqual((1, 2, 3), ids.eval())
+      self.assertEqual(0,
+                       len(ops.get_collection(ops.GraphKeys.ASSET_FILEPATHS)))
 
   def test_int32_index_table_from_file(self):
     vocabulary_file = self._createVocabFile(
@@ -1180,7 +1250,7 @@ class IndexTableFromFile(test.TestCase):
           constant_op.constant((1, -1000, 11), dtype=dtypes.int32))
 
       self.assertRaises(errors_impl.OpError, ids.eval)
-      data_flow_ops.tables_initializer().run()
+      lookup_ops.tables_initializer().run()
       self.assertAllEqual((1, 2, 3), ids.eval())
 
   def test_int64_index_table_from_file(self):
@@ -1194,7 +1264,7 @@ class IndexTableFromFile(test.TestCase):
           constant_op.constant((1, -1000, 11), dtype=dtypes.int64))
 
       self.assertRaises(errors_impl.OpError, ids.eval)
-      data_flow_ops.tables_initializer().run()
+      lookup_ops.tables_initializer().run()
       self.assertAllEqual((1, 2, 3), ids.eval())
 
   def test_index_table_from_file_with_default_value(self):
@@ -1206,7 +1276,7 @@ class IndexTableFromFile(test.TestCase):
       ids = table.lookup(constant_op.constant(["salad", "surgery", "tarkus"]))
 
       self.assertRaises(errors_impl.OpError, ids.eval)
-      data_flow_ops.tables_initializer().run()
+      lookup_ops.tables_initializer().run()
       self.assertAllEqual((1, 2, default_value), ids.eval())
 
   def test_index_table_from_file_with_oov_buckets(self):
@@ -1218,7 +1288,7 @@ class IndexTableFromFile(test.TestCase):
           constant_op.constant(["salad", "surgery", "tarkus", "toccata"]))
 
       self.assertRaises(errors_impl.OpError, ids.eval)
-      data_flow_ops.tables_initializer().run()
+      lookup_ops.tables_initializer().run()
       self.assertAllEqual(
           (
               1,  # From vocabulary file.
@@ -1227,7 +1297,13 @@ class IndexTableFromFile(test.TestCase):
               860),  # 3 + fingerprint("toccata") mod 300.
           ids.eval())
 
-  def test_index_table_from_file_with_only_oov_buckets(self):
+  def test_index_table_from_file_fails_with_empty_vocabulary_file_name(self):
+    self.assertRaises(
+        ValueError,
+        lookup.index_table_from_file,
+        vocabulary_file="")
+
+  def test_index_table_from_file_fails_with_empty_vocabulary(self):
     self.assertRaises(
         ValueError,
         lookup.index_table_from_file,
@@ -1241,7 +1317,7 @@ class IndexTableFromFile(test.TestCase):
       ids = table.lookup(constant_op.constant(["salad", "surgery", "tarkus"]))
 
       self.assertRaises(errors_impl.OpError, ids.eval)
-      data_flow_ops.tables_initializer().run()
+      lookup_ops.tables_initializer().run()
       self.assertAllEqual((1, -1, -1), ids.eval())
       self.assertEqual(2, table.size().eval())
 
@@ -1268,7 +1344,7 @@ class IndexTableFromFile(test.TestCase):
       ids = table.lookup(constant_op.constant(["salad", "surgery", "tarkus"]))
 
       self.assertRaises(errors_impl.OpError, ids.eval)
-      data_flow_ops.tables_initializer().run()
+      lookup_ops.tables_initializer().run()
       self.assertAllEqual((1, 2, -1), ids.eval())
       self.assertEqual(3, table.size().eval())
 
@@ -1327,7 +1403,7 @@ class IndexTableFromTensor(test.TestCase):
       ids = table.lookup(constant_op.constant(("salad", "surgery", "tarkus")))
 
       self.assertRaises(errors_impl.OpError, ids.eval)
-      data_flow_ops.tables_initializer().run()
+      lookup_ops.tables_initializer().run()
       self.assertAllEqual((1, 2, 3), ids.eval())
 
   def test_int32_index_table_from_tensor_with_tensor_init(self):
@@ -1338,7 +1414,7 @@ class IndexTableFromTensor(test.TestCase):
           constant_op.constant((1, -1000, 11), dtype=dtypes.int32))
 
       self.assertRaises(errors_impl.OpError, ids.eval)
-      data_flow_ops.tables_initializer().run()
+      lookup_ops.tables_initializer().run()
       self.assertAllEqual((1, 2, 3), ids.eval())
 
   def test_int64_index_table_from_tensor_with_tensor_init(self):
@@ -1349,7 +1425,7 @@ class IndexTableFromTensor(test.TestCase):
           constant_op.constant((1, -1000, 11), dtype=dtypes.int64))
 
       self.assertRaises(errors_impl.OpError, ids.eval)
-      data_flow_ops.tables_initializer().run()
+      lookup_ops.tables_initializer().run()
       self.assertAllEqual((1, 2, 3), ids.eval())
 
   def test_index_table_from_tensor_with_default_value(self):
@@ -1360,7 +1436,7 @@ class IndexTableFromTensor(test.TestCase):
       ids = table.lookup(constant_op.constant(["salad", "surgery", "tarkus"]))
 
       self.assertRaises(errors_impl.OpError, ids.eval)
-      data_flow_ops.tables_initializer().run()
+      lookup_ops.tables_initializer().run()
       self.assertAllEqual((1, 2, default_value), ids.eval())
 
   def test_index_table_from_tensor_missing_mapping(self):
@@ -1376,7 +1452,7 @@ class IndexTableFromTensor(test.TestCase):
       self.assertRaises(errors_impl.OpError, ids.eval)
       with self.assertRaisesRegexp(
           errors_impl.OpError, "keys and values cannot be empty"):
-        data_flow_ops.tables_initializer().run()
+        lookup_ops.tables_initializer().run()
 
   def test_index_table_from_tensor_with_invalid_hashers(self):
     with self.test_session():
@@ -1404,7 +1480,7 @@ class StringToIndexTest(test.TestCase):
       indices = lookup.string_to_index(feats, mapping=mapping_strings)
 
       self.assertRaises(errors_impl.OpError, indices.eval)
-      data_flow_ops.tables_initializer().run()
+      lookup_ops.tables_initializer().run()
 
       self.assertAllEqual((1, 2, -1), indices.eval())
 
@@ -1415,7 +1491,7 @@ class StringToIndexTest(test.TestCase):
       _ = lookup.string_to_index(feats, mapping=mapping_strings)
 
       self.assertRaises(errors_impl.OpError,
-                        data_flow_ops.tables_initializer().run)
+                        lookup_ops.tables_initializer().run)
 
   def test_string_to_index_with_default_value(self):
     default_value = -42
@@ -1426,7 +1502,7 @@ class StringToIndexTest(test.TestCase):
           feats, mapping=mapping_strings, default_value=default_value)
       self.assertRaises(errors_impl.OpError, indices.eval)
 
-      data_flow_ops.tables_initializer().run()
+      lookup_ops.tables_initializer().run()
       self.assertAllEqual((1, 2, default_value), indices.eval())
 
 
@@ -1445,7 +1521,7 @@ class IndexToStringTableFromFileTest(test.TestCase):
           vocabulary_file=vocabulary_file)
       features = table.lookup(constant_op.constant([0, 1, 2, 3], dtypes.int64))
       self.assertRaises(errors_impl.OpError, features.eval)
-      data_flow_ops.tables_initializer().run()
+      lookup_ops.tables_initializer().run()
       self.assertAllEqual((b"brain", b"salad", b"surgery", b"UNK"),
                           features.eval())
 
@@ -1457,7 +1533,7 @@ class IndexToStringTableFromFileTest(test.TestCase):
           vocabulary_file=vocabulary_file, default_value=default_value)
       features = table.lookup(constant_op.constant([1, 2, 4], dtypes.int64))
       self.assertRaises(errors_impl.OpError, features.eval)
-      data_flow_ops.tables_initializer().run()
+      lookup_ops.tables_initializer().run()
       self.assertAllEqual((b"salad", b"surgery", default_value),
                           features.eval())
 
@@ -1471,7 +1547,7 @@ class IndexToStringTableFromFileTest(test.TestCase):
           default_value=default_value)
       features = table.lookup(constant_op.constant([1, 2, 4], dtypes.int64))
       self.assertRaises(errors_impl.OpError, features.eval)
-      data_flow_ops.tables_initializer().run()
+      lookup_ops.tables_initializer().run()
       self.assertAllEqual((b"salad", default_value, default_value),
                           features.eval())
 
@@ -1483,7 +1559,7 @@ class IndexToStringTableFromFileTest(test.TestCase):
       features = table.lookup(constant_op.constant([1, 2, 4], dtypes.int64))
 
       self.assertRaises(errors_impl.OpError, features.eval)
-      init = data_flow_ops.tables_initializer()
+      init = lookup_ops.tables_initializer()
       self.assertRaisesRegexp(errors_impl.InvalidArgumentError,
                               "Invalid vocab_size", init.run)
 
@@ -1495,7 +1571,7 @@ class IndexToStringTableFromFileTest(test.TestCase):
       features = table.lookup(constant_op.constant([1, 2, 4], dtypes.int64))
 
       self.assertRaises(errors_impl.OpError, features.eval)
-      data_flow_ops.tables_initializer().run()
+      lookup_ops.tables_initializer().run()
       self.assertAllEqual((b"salad", b"surgery", b"UNK"), features.eval())
 
 
@@ -1510,7 +1586,7 @@ class IndexToStringTableFromTensorTest(test.TestCase):
       indices = constant_op.constant([0, 1, 2, 3], dtypes.int64)
       features = table.lookup(indices)
       self.assertRaises(errors_impl.OpError, features.eval)
-      data_flow_ops.tables_initializer().run()
+      lookup_ops.tables_initializer().run()
 
       self.assertAllEqual((b"brain", b"salad", b"surgery", b"UNK"),
                           features.eval())
@@ -1522,7 +1598,7 @@ class IndexToStringTableFromTensorTest(test.TestCase):
           mapping=mapping_strings)
       indices = constant_op.constant([0, 1, 4], dtypes.int64)
       features = table.lookup(indices)
-      data_flow_ops.tables_initializer().run()
+      lookup_ops.tables_initializer().run()
       self.assertAllEqual((b"hello", b"hello", b"UNK"), features.eval())
 
   def test_index_to_string_with_default_value(self):
@@ -1535,7 +1611,7 @@ class IndexToStringTableFromTensorTest(test.TestCase):
       features = table.lookup(indices)
       self.assertRaises(errors_impl.OpError, features.eval)
 
-      data_flow_ops.tables_initializer().run()
+      lookup_ops.tables_initializer().run()
       self.assertAllEqual((b"salad", b"surgery", default_value),
                           features.eval())
 
@@ -1549,7 +1625,7 @@ class IndexToStringTest(test.TestCase):
       feats = lookup.index_to_string(indices, mapping=mapping_strings)
 
       self.assertRaises(errors_impl.OpError, feats.eval)
-      data_flow_ops.tables_initializer().run()
+      lookup_ops.tables_initializer().run()
 
       self.assertAllEqual((b"brain", b"salad", b"surgery", b"UNK"),
                           feats.eval())
@@ -1559,11 +1635,11 @@ class IndexToStringTest(test.TestCase):
       mapping_strings = constant_op.constant(["hello", "hello"])
       indices = constant_op.constant([0, 1, 4], dtypes.int64)
       feats = lookup.index_to_string(indices, mapping=mapping_strings)
-      data_flow_ops.tables_initializer().run()
+      lookup_ops.tables_initializer().run()
       self.assertAllEqual((b"hello", b"hello", b"UNK"), feats.eval())
 
       self.assertRaises(errors_impl.OpError,
-                        data_flow_ops.tables_initializer().run)
+                        lookup_ops.tables_initializer().run)
 
   def test_index_to_string_with_default_value(self):
     default_value = b"NONE"
@@ -1574,7 +1650,7 @@ class IndexToStringTest(test.TestCase):
           indices, mapping=mapping_strings, default_value=default_value)
       self.assertRaises(errors_impl.OpError, feats.eval)
 
-      data_flow_ops.tables_initializer().run()
+      lookup_ops.tables_initializer().run()
       self.assertAllEqual((b"salad", b"surgery", default_value), feats.eval())
 
 
@@ -1586,23 +1662,22 @@ class InitializeTableFromFileOpTest(test.TestCase):
       f.write("\n".join(values) + "\n")
     return vocabulary_file
 
+  @test_util.run_in_graph_and_eager_modes()
   def testInitializeStringTable(self):
     vocabulary_file = self._createVocabFile("one_column_1.txt")
+    default_value = -1
+    table = lookup.HashTable(
+        lookup.TextFileInitializer(vocabulary_file, dtypes.string,
+                                   lookup.TextFileIndex.WHOLE_LINE,
+                                   dtypes.int64,
+                                   lookup.TextFileIndex.LINE_NUMBER),
+        default_value)
+    self.evaluate(table.init)
 
-    with self.test_session():
-      default_value = -1
-      table = lookup.HashTable(
-          lookup.TextFileInitializer(vocabulary_file, dtypes.string,
-                                     lookup.TextFileIndex.WHOLE_LINE,
-                                     dtypes.int64,
-                                     lookup.TextFileIndex.LINE_NUMBER),
-          default_value)
-      table.init.run()
+    output = table.lookup(constant_op.constant(["brain", "salad", "tank"]))
 
-      output = table.lookup(constant_op.constant(["brain", "salad", "tank"]))
-
-      result = output.eval()
-      self.assertAllEqual([0, 1, -1], result)
+    result = self.evaluate(output)
+    self.assertAllEqual([0, 1, -1], result)
 
   def testInitializeInt64Table(self):
     vocabulary_file = self._createVocabFile(
@@ -1737,7 +1812,7 @@ class InitializeTableFromFileOpTest(test.TestCase):
           default_value,
           shared_name=shared_name)
 
-      data_flow_ops.tables_initializer().run()
+      lookup_ops.tables_initializer().run()
 
       input_string = constant_op.constant(["brain", "salad", "tank"])
 
@@ -2063,7 +2138,7 @@ class IdTableWithHashBucketsTest(test.TestCase):
           hasher_spec=lookup.StrongHashSpec((1, 2)),
           name="table2")
 
-      data_flow_ops.tables_initializer().run()
+      lookup_ops.tables_initializer().run()
 
       input_string = constant_op.constant(
           ["fruit", "brain", "salad", "surgery", "UNK"])
@@ -2149,7 +2224,7 @@ class IdTableWithHashBucketsTest(test.TestCase):
               default_value2),
           oov_buckets)
 
-      data_flow_ops.tables_initializer().run()
+      lookup_ops.tables_initializer().run()
 
       input_string_1 = constant_op.constant(
           ["brain", "salad", "surgery", "UNK"])

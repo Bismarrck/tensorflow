@@ -16,16 +16,16 @@ limitations under the License.
 %include "tensorflow/python/platform/base.i"
 
 %{
-#include "tensorflow/python/framework/python_op_gen.h"
+#include "tensorflow/python/eager/python_eager_op_gen.h"
 %}
 
-// Input typemap for GetPythonWrappers.
+// Input typemap for GetEagerPythonWrappers.
 // Accepts a python object of 'bytes' type, and converts it to
 // a const char* pointer and size_t length. The default typemap
 // going from python bytes to const char* tries to decode the
 // contents from utf-8 to unicode for Python version >= 3, but
 // we want the bytes to be uninterpreted.
-%typemap(in) (const char* op_wrapper_buf, size_t op_wrapper_len) {
+%typemap(in) (const char* op_list_buf, size_t op_list_len) {
   char* c_string;
   Py_ssize_t py_size;
   if (PyBytes_AsStringAndSize($input, &c_string, &py_size) == -1) {
@@ -37,5 +37,5 @@ limitations under the License.
 
 
 %ignoreall;
-%unignore tensorflow::GetPythonWrappers;
-%include "tensorflow/python/framework/python_op_gen.h"
+%unignore tensorflow::GetEagerPythonWrappers;
+%include "tensorflow/python/eager/python_eager_op_gen.h"
