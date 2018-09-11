@@ -20,34 +20,24 @@ py_library(
     name = "utils",
     srcs = [
         "__init__.py",
-        "builtins.py",
         "context_managers.py",
         "misc.py",
         "multiple_dispatch.py",
         "py_func.py",
         "tensor_list.py",
+        "tensors.py",
         "testing.py",
         "type_check.py",
-        "type_hints.py",
     ],
     srcs_version = "PY2AND3",
     visibility = ["//tensorflow:__subpackages__"],
     deps = [
+        "//tensorflow/contrib/autograph/pyct",
+        "//tensorflow/python:dtypes",
         "//tensorflow/python:list_ops",
         "//tensorflow/python:script_ops",
         "//tensorflow/python/data/ops:dataset_ops",
         "@six_archive//:six",
-    ],
-)
-
-py_test(
-    name = "builtins_test",
-    srcs = ["builtins_test.py"],
-    srcs_version = "PY2AND3",
-    tags = ["no_windows"],
-    deps = [
-        ":utils",
-        "//tensorflow/python:client_testlib",
     ],
 )
 
@@ -110,5 +100,15 @@ py_test(
         ":utils",
         "//tensorflow/python:client_testlib",
         "//tensorflow/python:list_ops",
+    ],
+)
+
+py_test(
+    name = "tensors_test",
+    srcs = ["tensors_test.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":utils",
+        "//tensorflow/python:client_testlib",
     ],
 )

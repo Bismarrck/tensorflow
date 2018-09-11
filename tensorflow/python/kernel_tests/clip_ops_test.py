@@ -18,11 +18,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
+
 from tensorflow.python.framework import constant_op
 from tensorflow.python.framework import dtypes
+from tensorflow.python.framework import errors
 from tensorflow.python.framework import ops
+from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import clip_ops
 from tensorflow.python.ops import gradient_checker
+from tensorflow.python.ops import gradients_impl
 from tensorflow.python.platform import test
 
 
@@ -154,12 +159,18 @@ class ClipTest(test.TestCase):
       ans = clip_ops.clip_by_norm(x, clip_norm)
       tf_ans = ans.eval()
 
-      clip_tensor = constant_op.constant(4.0)
       ans = clip_ops.clip_by_norm(x, clip_norm)
       tf_ans_tensor = ans.eval()
 
     self.assertAllClose(np_ans, tf_ans)
     self.assertAllClose(np_ans, tf_ans_tensor)
+
+  def testClipByNormGradientZeros(self):
+    with self.test_session(use_gpu=True):
+      x = array_ops.zeros([3])
+      b = clip_ops.clip_by_norm(x, 1.)
+      grad, = gradients_impl.gradients(b, x)
+      self.assertAllEqual(grad.eval(), [1., 1., 1.])
 
   def testClipByNormBadShape(self):
     with self.test_session(use_gpu=True):
@@ -366,6 +377,21 @@ class ClipTest(test.TestCase):
     self.assertAllClose(np_ans_0, tf_ans_1)
     self.assertAllClose(np_ans_1, tf_ans_2)
 
+  def testClipByGlobalNormInf(self):
+    with self.test_session(use_gpu=True):
+      x0 = constant_op.constant([-2.0, 0.0, np.inf, 4.0, 0.0, 0.0],
+                                shape=[2, 3])
+      x1 = constant_op.constant([1.0, -2.0])
+      clip_norm = 6.0
+
+      ans, norm = clip_ops.clip_by_global_norm([x0, x1], clip_norm)
+      with self.assertRaisesRegexp(errors.InvalidArgumentError, "global norm"):
+        norm.eval()
+      with self.assertRaisesRegexp(errors.InvalidArgumentError, "global norm"):
+        ans[0].eval()
+      with self.assertRaisesRegexp(errors.InvalidArgumentError, "global norm"):
+        ans[1].eval()
+
   def testClipByAverageNormClipped(self):
     # Norm clipping when average clip_norm < 0.83333333
     with self.test_session(use_gpu=True):
@@ -413,6 +439,16 @@ class ClipTest(test.TestCase):
       tf_ans = ans.eval()
 
     self.assertAllClose(np_ans, tf_ans)
+
+  def testClipByValueEmptyTensor(self):
+    # Test case for GitHub issue 19337
+    zero = array_ops.placeholder(dtype=dtypes.float32, shape=None)
+    x = clip_ops.clip_by_value(zero, zero, zero)
+    y = clip_ops.clip_by_value(zero, 1.0, 1.0)
+    z = clip_ops.clip_by_value(zero, zero, 1.0)
+    w = clip_ops.clip_by_value(zero, 1.0, zero)
+    with self.test_session(use_gpu=True) as sess:
+      sess.run([x, y, z, w], feed_dict={zero: np.zeros((7, 0))})
 
 
 if __name__ == '__main__':

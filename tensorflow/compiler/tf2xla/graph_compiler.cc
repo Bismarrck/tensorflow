@@ -29,6 +29,7 @@ limitations under the License.
 #include "tensorflow/compiler/tf2xla/xla_context.h"
 #include "tensorflow/compiler/tf2xla/xla_op_kernel.h"
 #include "tensorflow/compiler/xla/client/client_library.h"
+#include "tensorflow/compiler/xla/client/xla_builder.h"
 #include "tensorflow/core/common_runtime/device.h"
 #include "tensorflow/core/common_runtime/executor.h"
 #include "tensorflow/core/common_runtime/function.h"
@@ -39,6 +40,7 @@ limitations under the License.
 #include "tensorflow/core/graph/algorithm.h"
 #include "tensorflow/core/graph/graph_constructor.h"
 #include "tensorflow/core/graph/node_builder.h"
+#include "tensorflow/core/graph/validate.h"
 #include "tensorflow/core/lib/gtl/cleanup.h"
 #include "tensorflow/core/lib/hash/hash.h"
 #include "tensorflow/core/platform/logging.h"
@@ -55,7 +57,8 @@ Status PrepareArguments(XlaOpKernelContext* ctx, Graph* graph,
   std::vector<bool> compile_time_constant_flags(expressions.size());
 
   TF_RETURN_IF_ERROR(
-      BackwardsConstAnalysis(*graph, &compile_time_constant_flags));
+      BackwardsConstAnalysis(*graph, &compile_time_constant_flags,
+                             /*compile_time_const_nodes=*/nullptr));
 
   args->resize(expressions.size());
   for (int i = 0; i < args->size(); ++i) {
@@ -78,7 +81,7 @@ Status PrepareArguments(XlaOpKernelContext* ctx, Graph* graph,
       TF_ASSIGN_OR_RETURN(auto literal,
                           client->ComputeConstant(constant_graph));
       TF_RETURN_IF_ERROR(
-          LiteralToHostTensor(*literal, arg.type, &arg.constant_value));
+          LiteralToHostTensor(literal, arg.type, &arg.constant_value));
     } else {
       arg.kind = XlaCompiler::Argument::kParameter;
     }
@@ -87,6 +90,8 @@ Status PrepareArguments(XlaOpKernelContext* ctx, Graph* graph,
 }
 }  // namespace
 Status GraphCompiler::Compile() {
+  // Check that the graph has no illegal cycles.
+  TF_RETURN_IF_ERROR(graph::ValidateGraphHasNoCycle(*graph_));
   // Maintain a mapping from node id to node outputs.
   using NodeOutputs = std::vector<TensorValue>;
   std::vector<NodeOutputs> output_registry(graph_->num_node_ids());
@@ -122,7 +127,7 @@ Status GraphCompiler::Compile() {
     TF_RET_CHECK(!n->IsRecv() && !n->IsSend() && !n->IsSwitch())
         << "Not supported node: " << n->DebugString();
     params.op_kernel = op_kernel.get();
-    gtl::InlinedVector<AllocatorAttributes, 4> output_attr(n->num_outputs());
+    absl::InlinedVector<AllocatorAttributes, 4> output_attr(n->num_outputs());
     params.output_attr_array = output_attr.data();
 
     // tensor_inputs_ is a buffer reused across graph traversal. We clean up and
@@ -141,6 +146,7 @@ Status GraphCompiler::Compile() {
     }
 
     OpKernelContext op_context(&params, n->num_outputs());
+    VLOG(3) << "Translating " << params.op_kernel->name();
     if (IsFunctional(n)) {
       TF_RETURN_IF_ERROR(CompileFunctionalNode(n, &op_context));
     } else {
@@ -157,9 +163,8 @@ Status GraphCompiler::Compile() {
     outputs.resize(n->num_outputs());
     for (int o = 0; o < n->num_outputs(); ++o) {
       outputs[o] = op_context.release_output(o);
-      if (*op_context.is_output_dead() || outputs[o].tensor == nullptr) {
+      if (outputs[o].tensor == nullptr) {
         return errors::Internal("Missing xla_context ", o, "-th output from ",
-                                (*op_context.is_output_dead() ? "(dead)" : ""),
                                 SummarizeNode(*n));
       }
     }
@@ -208,10 +213,11 @@ Status GraphCompiler::CompileFunctionalNode(Node* n,
   TF_RETURN_IF_ERROR(
       PrepareArguments(&xla_op_context, graph.get(), expressions, &arguments));
 
+  XlaCompiler::CompileOptions compile_options;
+  compile_options.is_entry_computation = false;
   XlaCompiler::CompilationResult result;
-
-  TF_RETURN_IF_ERROR(compiler->CompileFunction(XlaCompiler::CompileOptions(),
-                                               func, arguments, &result));
+  TF_RETURN_IF_ERROR(
+      compiler->CompileFunction(compile_options, func, arguments, &result));
 
   TF_RET_CHECK(arguments.size() == expressions.size());
 
@@ -226,14 +232,17 @@ Status GraphCompiler::CompileFunctionalNode(Node* n,
   XlaContext& context = XlaContext::Get(op_context);
   auto* b = context.builder();
 
-  auto output_handle = b->Call(*result.computation, handles);
+  auto output_handle = xla::Call(b, *result.computation, handles);
   // The output handle of `Call` computation is a tuple type. Unzip it so
   // that it can fit into future computations.
+  int computation_output = 0;
   for (int64 i = 0; i < n->num_outputs(); ++i) {
     if (result.outputs[i].is_constant) {
       xla_op_context.SetConstantOutput(i, result.outputs[i].constant_value);
     } else {
-      xla_op_context.SetOutput(i, b->GetTupleElement(output_handle, i));
+      xla_op_context.SetOutput(
+          i, xla::GetTupleElement(output_handle, computation_output));
+      ++computation_output;
     }
   }
   return b->first_error();

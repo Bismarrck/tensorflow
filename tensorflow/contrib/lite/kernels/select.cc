@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
-#include "tensorflow/contrib/lite/context.h"
+#include "tensorflow/contrib/lite/c/c_api_internal.h"
 #include "tensorflow/contrib/lite/kernels/internal/reference/reference_ops.h"
 #include "tensorflow/contrib/lite/kernels/internal/tensor.h"
 #include "tensorflow/contrib/lite/kernels/kernel_util.h"
@@ -33,10 +33,10 @@ TfLiteStatus SelectPrepare(TfLiteContext* context, TfLiteNode* node) {
   TF_LITE_ENSURE_EQ(context, NumInputs(node), 3);
   TF_LITE_ENSURE_EQ(context, NumOutputs(node), 1);
 
-  TfLiteTensor* input_condition =
+  const TfLiteTensor* input_condition =
       GetInput(context, node, kInputTensorCondition);
-  TfLiteTensor* input_x = GetInput(context, node, kInputTensorX);
-  TfLiteTensor* input_y = GetInput(context, node, kInputTensorY);
+  const TfLiteTensor* input_x = GetInput(context, node, kInputTensorX);
+  const TfLiteTensor* input_y = GetInput(context, node, kInputTensorY);
   TfLiteTensor* output = GetOutput(context, node, kOutputTensor);
 
   // Input must be bool.
@@ -62,10 +62,10 @@ TfLiteStatus SelectPrepare(TfLiteContext* context, TfLiteNode* node) {
 }
 
 TfLiteStatus SelectEval(TfLiteContext* context, TfLiteNode* node) {
-  TfLiteTensor* input_condition =
+  const TfLiteTensor* input_condition =
       GetInput(context, node, kInputTensorCondition);
-  TfLiteTensor* input_x = GetInput(context, node, kInputTensorX);
-  TfLiteTensor* input_y = GetInput(context, node, kInputTensorY);
+  const TfLiteTensor* input_x = GetInput(context, node, kInputTensorX);
+  const TfLiteTensor* input_y = GetInput(context, node, kInputTensorY);
   TfLiteTensor* output = GetOutput(context, node, kOutputTensor);
 
   bool is_rank_one = !HaveSameShapes(input_condition, input_x);
@@ -89,6 +89,9 @@ TfLiteStatus SelectEval(TfLiteContext* context, TfLiteNode* node) {
     case kTfLiteUInt8:                                                         \
       TF_LITE_SELECT(uint8_t, op);                                             \
       break;                                                                   \
+    case kTfLiteInt16:                                                         \
+      TF_LITE_SELECT(int16_t, op);                                             \
+      break;                                                                   \
     case kTfLiteInt32:                                                         \
       TF_LITE_SELECT(int32_t, op);                                             \
       break;                                                                   \
@@ -97,7 +100,9 @@ TfLiteStatus SelectEval(TfLiteContext* context, TfLiteNode* node) {
       break;                                                                   \
     default:                                                                   \
       context->ReportError(context,                                            \
-                           "Does not support type other than bool|float|int"); \
+                           "Does not support type other than bool|float|int, " \
+                           "got %d",                                           \
+                           type);                                              \
       return kTfLiteError;                                                     \
   }
 

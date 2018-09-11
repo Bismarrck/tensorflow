@@ -15,6 +15,7 @@ limitations under the License.
 
 #include "tensorflow/core/framework/op_gen_lib.h"
 
+#include <algorithm>
 #include <vector>
 #include "tensorflow/core/framework/attr_value.pb.h"
 #include "tensorflow/core/lib/core/errors.h"
@@ -185,7 +186,7 @@ static bool FindMultiline(StringPiece line, size_t colon, string* end) {
   while (str_util::ConsumePrefix(&line, " ")) {
   }
   if (str_util::ConsumePrefix(&line, "<<")) {
-    *end = std::string(line);
+    *end = string(line);
     return true;
   }
   return false;
