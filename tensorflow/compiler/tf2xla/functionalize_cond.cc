@@ -34,6 +34,7 @@ limitations under the License.
 #include "tensorflow/core/graph/algorithm.h"
 #include "tensorflow/core/graph/control_flow.h"
 #include "tensorflow/core/graph/node_builder.h"
+#include "tensorflow/core/lib/strings/strcat.h"
 
 using xla::StatusOr;
 
@@ -638,7 +639,7 @@ Status Conditional::ExtractBodies(Graph* graph) {
 Status Conditional::BuildIfNode(Graph* graph,
                                 FunctionLibraryDefinition* library) {
   VLOG(2) << "Build cond function for " << name();
-  NodeDefBuilder builder(name(), "If");
+  NodeDefBuilder builder(name(), "If", library);
   const string branch_name[] = {"else_branch", "then_branch"};
   for (auto branch : {BranchType::kElseBranch, BranchType::kThenBranch}) {
     int branch_index = static_cast<int>(branch);
@@ -694,6 +695,12 @@ Status Conditional::BuildIfNode(Graph* graph,
   VLOG(3) << "Build output type: " << DataTypeVectorString(out_type);
 
   builder.Attr("Tcond", DT_BOOL);
+  string outside_compilation;
+  if (GetNodeAttr(predicate_.node->def(), kXlaOutsideCompilationAttrName,
+                  &outside_compilation)
+          .ok()) {
+    builder.Attr(kXlaOutsideCompilationAttrName, outside_compilation);
+  }
   builder.Device(predicate_.node->assigned_device_name());
   // Conditional should be the first input ...
   builder.Input(NodeDefBuilder::NodeOut(predicate_.node->name(),
