@@ -123,9 +123,9 @@ class TestCase(test.TestCase):
 
     if not isinstance(converter_module, (list, tuple)):
       converter_module = (converter_module,)
-    for m in converter_module:
+    for i, m in enumerate(converter_module):
+      node = converter.standard_analysis(node, ctx, is_initial=not i)
       node = m.transform(node, ctx)
-      node = converter.standard_analysis(node, ctx, is_initial=True)
 
     with self.compiled(node, namespace, *tf_symbols) as result:
       yield result
@@ -162,7 +162,9 @@ class TestCase(test.TestCase):
       namer = FakeNamer()
     program_ctx = converter.ProgramContext(
         options=converter.ConversionOptions(
-            recursive=recursive, strip_decorators=strip_decorators),
+            recursive=recursive,
+            strip_decorators=strip_decorators,
+            verbose=True),
         partial_types=None,
         autograph_module=None,
         uncompiled_modules=config.DEFAULT_UNCOMPILED_MODULES)

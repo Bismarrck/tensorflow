@@ -373,7 +373,7 @@ class TestDistributionStrategyWithNumpyArrays(test.TestCase,
     with self.cached_session():
       # 64 is the number of input samples.
       inputs = np.zeros((64, 3), dtype=np.float32)
-      # The number of towers is equal to 3.
+      # The number of replicas is equal to 3.
       strategy = mirrored_strategy.MirroredStrategy(['/device:GPU:0',
                                                      '/device:CPU:0',
                                                      '/device:GPU:1'])
@@ -387,32 +387,32 @@ class TestDistributionStrategyWithNumpyArrays(test.TestCase,
                                                           strategy)
 
       with self.assertRaisesRegexp(ValueError, 'is smaller than the number '
-                                               'of towers'):
-        # The batch size(32) * num_towers(3) is 96 which is greater than the
+                                               'of replicas'):
+        # The batch size(32) * num_replicas(3) is 96 which is greater than the
         # number of input samples(64).
         distributed_training_utils.get_input_batch_params(inputs,
                                                           32,
                                                           strategy)
 
-      # The number of towers now is equal to 2.
+      # The number of replicas now is equal to 2.
       strategy = mirrored_strategy.MirroredStrategy(['/device:GPU:0',
                                                      '/device:CPU:0'])
-      # 32 is the batch size per tower.
+      # 32 is the batch size per replica.
       steps = distributed_training_utils.get_input_batch_params(inputs,
                                                                 32,
                                                                 strategy)
       # The number of batches is the ratio of input samples(64) to
       # batch size(32) which is 2. The number of steps(1) is the ratio of
-      # number of batches(2) to the number of towers(2).
+      # number of batches(2) to the number of replicas(2).
       self.assertEqual(steps, 1)
 
-      # 16 is the batch size per tower.
+      # 16 is the batch size per replica.
       steps = distributed_training_utils.get_input_batch_params(inputs,
                                                                 16,
                                                                 strategy)
       # The number of batches is the ratio of input samples(64) to
       # batch size(16) which is 4. The number of steps(2) is the ratio of
-      # number of batches(4) to the number of towers(2).
+      # number of batches(4) to the number of replicas(2).
       self.assertEqual(steps, 2)
 
   def test_calculating_batch_size(self):
@@ -436,10 +436,10 @@ class TestDistributionStrategyWithNumpyArrays(test.TestCase,
                                                            steps_name='steps',
                                                            steps=3)
 
-      # The global batch size(21) across all towers is the ratio of the input
+      # The global batch size(21) across all replicas is the ratio of the input
       # samples(64) to the steps(3).
       # The batch size(10) per device is the ratio of the global batch size(21)
-      # to the number of towers(2).
+      # to the number of replicas(2).
       # The global batch size and batch size are rounded integer values.
       self.assertEqual(10, distributed_training_utils.get_batch_dimension(
           iterator._iterator))
@@ -539,6 +539,49 @@ class TestDistributionStrategyWithDatasets(test.TestCase,
       model.fit(dataset, epochs=1, steps_per_epoch=2, verbose=0,
                 validation_data=dataset, validation_steps=2)
       model.predict(get_predict_dataset(distribution), steps=2)
+
+  @combinations.generate(strategy_combinations())
+  def test_model_interleaved_eval_same_as_direct_eval(self, distribution):
+    with self.cached_session():
+      loss = 'mse'
+
+      user_controlled_model = get_model()
+      user_controlled_optimizer = gradient_descent.GradientDescentOptimizer(
+          0.001)
+      user_controlled_metrics = ['mae', keras.metrics.CategoricalAccuracy()]
+      user_controlled_model.compile(user_controlled_optimizer, loss,
+                                    metrics=user_controlled_metrics,
+                                    distribute=distribution)
+
+      interleaved_model = get_model()
+      interleaved_optimizer = gradient_descent.GradientDescentOptimizer(0.001)
+      interleaved_metrics = ['mae', keras.metrics.CategoricalAccuracy()]
+      interleaved_model.compile(interleaved_optimizer, loss,
+                                metrics=interleaved_metrics,
+                                distribute=distribution)
+
+      dataset = get_dataset(distribution)
+
+      # Call fit with validation interleaved
+      interleaved_output = interleaved_model.fit(dataset, epochs=2,
+                                                 steps_per_epoch=2, verbose=0,
+                                                 validation_data=dataset,
+                                                 validation_steps=2)
+
+      # Manually control the validation running after each epoch.
+      user_controlled_output = []
+      for _ in range(2):
+        user_controlled_model.fit(
+            dataset, epochs=1, steps_per_epoch=2, verbose=0)
+        user_controlled_output.append(
+            user_controlled_model.evaluate(dataset, steps=2))
+
+      self.assertEqual(interleaved_output.history['val_loss'],
+                       [x[0] for x in user_controlled_output])
+      self.assertEqual(interleaved_output.history['val_mean_absolute_error'],
+                       [x[1] for x in user_controlled_output])
+      self.assertEqual(interleaved_output.history['val_categorical_accuracy'],
+                       [x[2] for x in user_controlled_output])
 
   # TODO(priyag): Enable this test for TPU. Currently tuples/dict don't work
   # as clone_model's input_tensors argument only seems to accept list and not
@@ -908,7 +951,7 @@ class TestDistributionStrategyCorrectness(test.TestCase,
           distribute=distribution)
 
       batch_size = 64
-      batch_size //= distribution.num_towers
+      batch_size //= distribution.num_replicas
       train_dataset = dataset_ops.Dataset.from_tensor_slices((x_train, y_train))
       train_dataset = batch_wrapper(train_dataset, batch_size, distribution)
 
@@ -943,7 +986,7 @@ class TestDistributionStrategyCorrectness(test.TestCase,
 
         batch_size = 64
         if with_distribution:
-          batch_size //= with_distribution.num_towers
+          batch_size //= with_distribution.num_replicas
         train_dataset = dataset_ops.Dataset.from_tensor_slices((x_train,
                                                                 y_train))
         train_dataset = batch_wrapper(train_dataset, batch_size, distribution)
@@ -958,7 +1001,7 @@ class TestDistributionStrategyCorrectness(test.TestCase,
         x_predict = [[1.], [2.], [3.], [4.]]
         predict_batch_size = 4
         if with_distribution:
-          predict_batch_size //= with_distribution.num_towers
+          predict_batch_size //= with_distribution.num_replicas
         predict_dataset = dataset_ops.Dataset.from_tensor_slices(x_predict)
         predict_dataset = batch_wrapper(predict_dataset,
                                         predict_batch_size, distribution)

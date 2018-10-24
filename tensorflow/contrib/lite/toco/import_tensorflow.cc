@@ -563,7 +563,8 @@ tensorflow::Status ConvertConvOperator(
 
   const auto& input_name = node.input(0);
   const auto& weights_name = node.input(1);
-  const auto& reordered_weights_name = weights_name + "_reordered";
+  const auto& reordered_weights_name =
+      AvailableArrayName(*model, weights_name + "_reordered");
   // Check if a ReorderAxesOperator was already created for these weights
   // (that happens when multiple layers share the same weights).
   const Operator* existing_reorder =
@@ -1652,9 +1653,6 @@ tensorflow::Status ConvertRangeOperator(
   op->inputs.push_back(node.input(1));
   op->inputs.push_back(node.input(2));
   op->outputs.push_back(node.name());
-
-  // For Flex mode. Please read the comments of the function.
-  RetainTensorFlowNodeDef(node, op);
 
   model->operators.emplace_back(op);
   return tensorflow::Status::OK();
