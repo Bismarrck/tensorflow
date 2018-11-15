@@ -22,10 +22,10 @@ from absl.testing import parameterized
 import numpy
 
 from tensorflow.contrib.distribute.python import combinations
-from tensorflow.contrib.distribute.python import mirrored_strategy
 from tensorflow.contrib.distribute.python.single_loss_example import batchnorm_example
 from tensorflow.contrib.distribute.python.single_loss_example import minimize_loss_example
 from tensorflow.python.data.ops import dataset_ops
+from tensorflow.python.distribute import reduce_util
 from tensorflow.python.eager import context
 from tensorflow.python.eager import test
 from tensorflow.python.framework import constant_op
@@ -67,8 +67,7 @@ class MinimizeLossStepTest(test.TestCase, parameterized.TestCase):
       def step_fn(ctx, *inputs):
         del ctx  # Unused
         return distribution.group(
-            distribution.call_for_each_replica(
-                model_fn, *inputs, run_concurrently=layer.built))
+            distribution.call_for_each_replica(model_fn, args=inputs))
 
       iterator = self._get_iterator(distribution.distribute_dataset(dataset_fn))
 
@@ -111,7 +110,7 @@ class MinimizeLossStepTest(test.TestCase, parameterized.TestCase):
       def run_step():
         return distribution.group(
             distribution.call_for_each_replica(
-                model_fn, iterator.get_next(), run_concurrently=layer.built))
+                model_fn, args=(iterator.get_next(),)))
 
       if not context.executing_eagerly():
         with self.cached_session() as sess:
@@ -162,8 +161,7 @@ class MinimizeLossStepTest(test.TestCase, parameterized.TestCase):
       def step_fn(ctx, *inputs):
         del ctx  # Unused
         return distribution.group(
-            distribution.call_for_each_replica(
-                model_fn, *inputs, run_concurrently=layer.built))
+            distribution.call_for_each_replica(model_fn, args=inputs))
 
       iterator = self._get_iterator(distribution.distribute_dataset(dataset_fn))
 
@@ -229,17 +227,10 @@ class MinimizeLossStepTest(test.TestCase, parameterized.TestCase):
           renorm=renorm,
           update_ops_in_replica_mode=not update_ops_in_cross_replica_mode)
 
-      # Make sure prefetching is disabled since that makes the
-      # specific input on each device to be non deterministic, and
-      # this test relies on specific input being on each device.
-      if isinstance(distribution, mirrored_strategy.MirroredStrategy):
-        self.assertFalse(distribution._prefetch_on_device)
-
       def step_fn(ctx, *inputs):
         del ctx  # Unused
         fetches = distribution.unwrap(
-            distribution.call_for_each_replica(
-                model_fn, *inputs, run_concurrently=batchnorm.built))
+            distribution.call_for_each_replica(model_fn, args=inputs))
         if update_ops_in_cross_replica_mode:
           fetches += ops.get_collection(ops.GraphKeys.UPDATE_OPS)
         return control_flow_ops.group(fetches)
@@ -334,8 +325,7 @@ class MinimizeLossStepTest(test.TestCase, parameterized.TestCase):
       def step_fn(ctx, x, y):
         del ctx  # Unused
         return distribution.group(
-            distribution.call_for_each_replica(
-                model_fn, x, y, run_concurrently=False))
+            distribution.call_for_each_replica(model_fn, args=(x, y)))
 
       iterator = self._get_iterator(distribution.distribute_dataset(dataset_fn))
 
@@ -421,7 +411,7 @@ class MinimizeLossStepTest(test.TestCase, parameterized.TestCase):
 
       def step_fn(output_context, *inputs):
         (train_op, loss) = distribution.call_for_each_replica(
-            model_fn, output_context, *inputs, run_concurrently=False)
+            model_fn, args=(output_context,) + inputs)
         output_context.set_last_step_output(
             name="cross_replica_loss_agg",
             output=loss,
@@ -495,7 +485,7 @@ class MinimizeLossStepTest(test.TestCase, parameterized.TestCase):
       self.assertEqual(distribution.num_replicas_in_sync,
                        len(distribution.unwrap(loss_output)))
       loss_output = distribution.reduce(
-          aggregation=variables_lib.VariableAggregation.MEAN,
+          aggregation=reduce_util.ReduceOp.MEAN,
           value=loss_output, destinations="/device:CPU:0")
 
     unwrapped_output = distribution.unwrap(loss_output)

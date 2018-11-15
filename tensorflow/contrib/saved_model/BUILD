@@ -102,14 +102,7 @@ py_test(
     size = "medium",
     srcs = ["python/saved_model/keras_saved_model_test.py"],
     srcs_version = "PY2AND3",
-    tags = [
-        "no_windows",
-        # TODO(b/119022845): Re-enable this test in TAP.
-        "manual",
-        "notap",
-        "notsan",
-        "no_oss",
-    ],
+    tags = ["no_windows"],
     deps = [
         ":keras_saved_model",
         "//tensorflow/python:client_testlib",

@@ -51,6 +51,7 @@ cc_library(
     deps = [
         ":jit_compilation_passes",
         "//tensorflow/compiler/jit/kernels:xla_ops",
+        "//tensorflow/compiler/tf2xla/kernels:xla_dummy_ops",
         "//tensorflow/compiler/tf2xla/kernels:xla_ops",
         "//tensorflow/compiler/xla/service:cpu_plugin",
     ],
@@ -64,6 +65,7 @@ cc_library(
         ":jit_compilation_passes",
         "//tensorflow/compiler/jit/kernels:xla_ops",
         "//tensorflow/compiler/tf2xla/kernels:xla_ops",
+        "//tensorflow/compiler/tf2xla/kernels:xla_dummy_ops",
         "//tensorflow/compiler/xla/service:gpu_plugin",
     ]),
     alwayslink = 1,
@@ -266,6 +268,7 @@ cc_library(
         "//tensorflow/core/kernels:variable_ops",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
     ],
 )
@@ -542,25 +545,6 @@ cc_library(
     hdrs = ["union_find.h"],
 )
 
-cc_library(
-    name = "producer_consumer_queue",
-    hdrs = ["producer_consumer_queue.h"],
-    deps = ["//tensorflow/core:lib"],
-)
-
-tf_cc_test(
-    name = "producer_consumer_queue_test",
-    size = "small",
-    srcs = ["producer_consumer_queue_test.cc"],
-    deps = [
-        ":producer_consumer_queue",
-        "//tensorflow/core:lib",
-        "//tensorflow/core:test",
-        "//tensorflow/core:test_main",
-        "//tensorflow/core:testlib",
-    ],
-)
-
 tf_cc_test(
     name = "deadness_analysis_test",
     size = "small",
@@ -624,6 +608,7 @@ tf_cc_test(
         "//tensorflow/compiler/tf2xla:xla_compiler",
         "//tensorflow/compiler/tf2xla/cc:xla_jit_ops",
         "//tensorflow/compiler/tf2xla/cc:xla_ops",
+        "//tensorflow/compiler/tf2xla/kernels:xla_dummy_ops",
         "//tensorflow/compiler/tf2xla/kernels:xla_ops",
         "//tensorflow/core:core_cpu",
         "//tensorflow/core:framework",
