@@ -37,6 +37,7 @@ from tensorflow.python.platform import tf_logging
 
 class AllReduceTest(test_util.TensorFlowTestCase):
 
+  @test_util.run_deprecated_v1
   def testFlattenTensorsShapesDefined(self):
     x = array_ops.placeholder(types_pb2.DT_FLOAT, [None])
     with self.assertRaisesRegexp(ValueError,
@@ -100,6 +101,7 @@ class AllReduceTest(test_util.TensorFlowTestCase):
           input_tensors.append(array_ops.identity(t8))
     return input_tensors, device_names
 
+  @test_util.run_deprecated_v1
   def testBuildRingGatherPassStructure(self):
     # 1 worker, 1 device
     input_tensors, device_names = self._buildInput(1, 1)
@@ -159,7 +161,7 @@ class AllReduceTest(test_util.TensorFlowTestCase):
       output_tensors = build_f(input_tensors, un_op)
       sum_reduced = math_ops.add_n(output_tensors)
       sum_reduced.op.run()
-      self.assertAllClose(sum_reduced.eval(), simple_sum.eval())
+      self.assertAllClose(sum_reduced.eval(), self.evaluate(simple_sum))
 
   def _testRingAllReduce(self, num_workers, num_gpus, shape, subdiv):
     start_time = time.time()
@@ -170,6 +172,7 @@ class AllReduceTest(test_util.TensorFlowTestCase):
                     "subdiv=%d elapsed=%f" %
                     (num_workers, num_gpus, shape, subdiv, elapsed))
 
+  @test_util.run_deprecated_v1
   def testRingAllReduce(self):
     self._testRingAllReduce(1, 2, [], 1)
     self._testRingAllReduce(1, 2, [8], 1)
@@ -199,6 +202,7 @@ class AllReduceTest(test_util.TensorFlowTestCase):
     tf_logging.info("ShuffleAllReduce num_workers=%d num_gpus=%d shape=%s "
                     "elapsed=%f" % (num_workers, num_gpus, shape, elapsed))
 
+  @test_util.run_deprecated_v1
   def testShuffleAllReduce(self):
     self._testShuffleAllReduce(1, 2, [], 1)
     self._testShuffleAllReduce(1, 2, [8], 1)
@@ -225,6 +229,7 @@ class AllReduceTest(test_util.TensorFlowTestCase):
                     "shape=%s elapsed=%f" %
                     (num_workers, num_gpus, shape, elapsed))
 
+  @test_util.run_deprecated_v1
   def testRecursiveHDAllReduce(self):
     self._testRecursiveHDAllReduce(1, 2, [8])
     self._testRecursiveHDAllReduce(1, 2, [4, 4])

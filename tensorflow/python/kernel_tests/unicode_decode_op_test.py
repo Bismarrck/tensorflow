@@ -21,6 +21,7 @@ from __future__ import print_function
 
 from tensorflow.python.framework import constant_op
 from tensorflow.python.framework import errors_impl as errors
+from tensorflow.python.framework import test_util
 from tensorflow.python.ops import gen_string_ops
 from tensorflow.python.platform import test
 
@@ -37,7 +38,7 @@ class UnicodeDecodeTest(test.TestCase):
 
   def testBatchDecode(self):
     text = constant_op.constant(
-        ["仅今年前", "中国进出口银行与中国银行加强合作"])
+        ["仅今年前", "分享介面終於迎來更新"])
     row_splits, utf8_text, offsets = gen_string_ops.unicode_decode_with_offsets(
         text, "utf-8")
 
@@ -47,28 +48,21 @@ class UnicodeDecodeTest(test.TestCase):
           codepoint("今"),
           codepoint("年"),
           codepoint("前"),
-          codepoint("中"),
-          codepoint("国"),
-          codepoint("进"),
-          codepoint("出"),
-          codepoint("口"),
-          codepoint("银"),
-          codepoint("行"),
-          codepoint("与"),
-          codepoint("中"),
-          codepoint("国"),
-          codepoint("银"),
-          codepoint("行"),
-          codepoint("加"),
-          codepoint("强"),
-          codepoint("合"),
-          codepoint("作")
+          codepoint("分"),
+          codepoint("享"),
+          codepoint("介"),
+          codepoint("面"),
+          codepoint("終"),
+          codepoint("於"),
+          codepoint("迎"),
+          codepoint("來"),
+          codepoint("更"),
+          codepoint("新")
       ],
-                          utf8_text.eval().tolist())
-      self.assertAllEqual([0, 4, 20], row_splits.eval().tolist())
-      self.assertAllEqual([0, 3, 6, 9, 0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30,
-                           33, 36, 39, 42, 45],
-                          offsets.eval().tolist())
+                          self.evaluate(utf8_text).tolist())
+      self.assertAllEqual([0, 4, 14], self.evaluate(row_splits).tolist())
+      self.assertAllEqual([0, 3, 6, 9, 0, 3, 6, 9, 12, 15, 18, 21, 24, 27],
+                          self.evaluate(offsets).tolist())
 
   def testBasicDecodeWithOffset(self):
     text = constant_op.constant(["仅今年前"])
@@ -82,10 +76,11 @@ class UnicodeDecodeTest(test.TestCase):
           codepoint("年"),
           codepoint("前"),
       ],
-                          utf8_text.eval().tolist())
-      self.assertAllEqual(row_splits.eval().tolist(), [0, 4])
-      self.assertAllEqual(starts.eval().tolist(), [0, 3, 6, 9])
+                          self.evaluate(utf8_text).tolist())
+      self.assertAllEqual(self.evaluate(row_splits).tolist(), [0, 4])
+      self.assertAllEqual(self.evaluate(starts).tolist(), [0, 3, 6, 9])
 
+  @test_util.run_deprecated_v1
   def testStrictError(self):
     text = constant_op.constant([b"\xFEED"])
     _, error, _ = gen_string_ops.unicode_decode_with_offsets(
@@ -93,7 +88,7 @@ class UnicodeDecodeTest(test.TestCase):
 
     with self.assertRaises(errors.InvalidArgumentError):
       with self.test_session():
-        error.eval()
+        self.evaluate(error)
 
   def testReplaceOnError(self):
     text = constant_op.constant([b"\xFE"])
@@ -102,8 +97,9 @@ class UnicodeDecodeTest(test.TestCase):
         text, "utf-8", errors="replace")
 
     with self.test_session():
-      self.assertAllEqual(utf8_text.eval().tolist(), [65533])
+      self.assertAllEqual(self.evaluate(utf8_text).tolist(), [65533])
 
+  @test_util.run_deprecated_v1
   def testBadReplacementChar(self):
     text = constant_op.constant([b"\xFE"])
     _, error, _ = gen_string_ops.unicode_decode_with_offsets(
@@ -111,7 +107,7 @@ class UnicodeDecodeTest(test.TestCase):
 
     with self.assertRaises(errors.InvalidArgumentError):
       with self.test_session():
-        error.eval()
+        self.evaluate(error)
 
   def testIgnoreOnError(self):
     text = constant_op.constant([b"\xFEhello"])
@@ -120,7 +116,7 @@ class UnicodeDecodeTest(test.TestCase):
         text, "utf-8", errors="ignore")
 
     with self.test_session():
-      self.assertAllEqual(utf8_text.eval().tolist(), [
+      self.assertAllEqual(self.evaluate(utf8_text).tolist(), [
           codepoint("h"),
           codepoint("e"),
           codepoint("l"),
@@ -128,6 +124,7 @@ class UnicodeDecodeTest(test.TestCase):
           codepoint("o")
       ])
 
+  @test_util.run_deprecated_v1
   def testBadErrorPolicy(self):
     text = constant_op.constant(["hippopotamus"])
 
@@ -148,8 +145,8 @@ class UnicodeDecodeTest(test.TestCase):
           codepoint("年"),
           codepoint("前"),
       ],
-                          utf8_text.eval().tolist())
-      self.assertAllEqual([0, 5], row_splits.eval().tolist())
+                          self.evaluate(utf8_text).tolist())
+      self.assertAllEqual([0, 5], self.evaluate(row_splits).tolist())
 
 
 if __name__ == "__main__":

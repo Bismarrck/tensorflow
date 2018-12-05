@@ -199,8 +199,16 @@ tf_kernel_library(
     name = "conv_2d",
     hdrs = ["conv_2d.h"],
     gpu_srcs = [
-        "conv_2d_gpu.cu.cc",
         "conv_2d.h",
+        "conv_2d_gpu.h",
+        "conv_2d_gpu_double.cu.cc",
+        "conv_2d_gpu_float.cu.cc",
+        "conv_2d_gpu_half.cu.cc",
+        "conv_2d_gpu_int.cu.cc",
+        "conv_2d_gpu_uint16.cu.cc",
+        "conv_2d_gpu_uint32.cu.cc",
+        "conv_2d_gpu_uint64.cu.cc",
+        "conv_2d_gpu_uint8.cu.cc",
     ],
     deps = [
         ":eigen_helpers",
@@ -4581,6 +4589,7 @@ tf_kernel_library(
         ":dense_update_functor",
         ":training_op_helpers",
         ":variable_ops",
+        ":inplace_ops",
     ],
 )
 
@@ -4818,11 +4827,13 @@ tf_kernel_library(
     name = "unicode_ops",
     prefix = "unicode_ops",
     deps = [
+        ":bounds_check",
         ":string_util",
         "//tensorflow/core:framework",
         "//tensorflow/core:lib",
         "//tensorflow/core:lib_internal",
         "//tensorflow/core:string_ops_op_lib",
+        "//third_party/eigen3",
         "//third_party/icu/data:conversion_data",
         "@icu//:common",
     ],
@@ -5396,6 +5407,7 @@ filegroup(
         "mfcc_mel_filterbank.h",
         "mirror_pad_op.h",
         "mirror_pad_op_cpu_impl.h",
+        "multinomial_op.h",
         "pad_op.h",
         "pooling_ops_3d.h",
         "random_op.h",
@@ -5414,6 +5426,7 @@ filegroup(
         "spacetobatch_functor.h",
         "spacetodepth_op.h",
         "spectrogram.h",
+        "stateless_random_ops.h",
         "string_util.h",
         "tensor_array.h",
         "tile_functor.h",
@@ -5553,6 +5566,7 @@ filegroup(
         "mirror_pad_op_cpu_impl_3.cc",
         "mirror_pad_op_cpu_impl_4.cc",
         "mirror_pad_op_cpu_impl_5.cc",
+        "multinomial_op.cc",
         "pad_op.cc",
         "padding_fifo_queue.cc",
         "padding_fifo_queue_op.cc",
@@ -5593,6 +5607,7 @@ filegroup(
         "stack.cc",
         "stack.h",
         "stack_ops.cc",
+        "stateless_random_ops.cc",
         "string_join_op.cc",
         "string_util.cc",
         "summary_op.cc",
@@ -5719,8 +5734,8 @@ filegroup(
             "batch_kernels.*",
             "regex_full_match_op.cc",
             "regex_replace_op.cc",
-            "unicode_script_op.cc",
             "unicode_ops.cc",
+            "unicode_script_op.cc",
             # Ops that are inherently incompatible with Android (e.g. tied to x86 platform).
             "mkl_*",
             "xsmm_*",
@@ -6265,6 +6280,28 @@ tf_cc_test(
     ],
 )
 
+tf_cc_test_mkl(
+    name = "mkl_quantized_pooling_ops_test",
+    size = "small",
+    srcs = ["mkl_quantized_pooling_ops_test.cc"],
+    deps = [
+        ":mkl_input_conversion_op",
+        ":mkl_pooling_ops",
+        ":ops_testutil",
+        ":ops_util",
+        ":quantization_utils",
+        ":quantized_ops",
+        "//tensorflow/core:array_ops_op_lib",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:math_ops_op_lib",
+        "//tensorflow/core:nn_ops_op_lib",
+        "//tensorflow/core:protos_all_cc",
+        "//tensorflow/core:test",
+        "//tensorflow/core:test_main",
+        "//tensorflow/core:testlib",
+    ],
+)
+
 tf_cc_test(
     name = "quantized_reshape_op_test",
     size = "small",
@@ -6728,6 +6765,13 @@ tf_kernel_library(
     name = "boosted_trees_ops",
     deps = [
         "//tensorflow/core/kernels/boosted_trees:boosted_trees_ops",
+    ],
+)
+
+tf_kernel_library(
+    name = "tensor_forest_ops",
+    deps = [
+        "//tensorflow/core/kernels/tensor_forest:tensor_forest_ops",
     ],
 )
 

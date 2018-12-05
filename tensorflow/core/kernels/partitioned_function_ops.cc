@@ -453,7 +453,7 @@ class PartitionedCallOp : public AsyncOpKernel {
         },
         rendez, std::move(done), std::placeholders::_1);
     auto* refcounted_done = new ReffedStatusCallback(std::move(callback));
-    for (int i = 1; i < handles->size(); ++i) {
+    for (int i = 0; i < handles->size(); ++i) {
       refcounted_done->Ref();
     }
 
@@ -507,6 +507,7 @@ class PartitionedCallOp : public AsyncOpKernel {
             });
       }
     }
+    refcounted_done->Unref();
   }
 
   string UniquifyFunctionName(const FunctionLibraryDefinition* function_library,
@@ -529,6 +530,12 @@ class PartitionedCallOp : public AsyncOpKernel {
     }
 
     tensorflow::grappler::GrapplerItem item;
+
+    // Add all available devices so that inlined function can be placed.
+    for (const Device* d : device_set.devices()) {
+      Status added_device = item.AddDevice(d->name());
+      if (!added_device.ok()) VLOG(3) << added_device.error_message();
+    }
 
     // Add fetches so that the graph can be pruned.
     for (Node* node : ret_nodes) {
