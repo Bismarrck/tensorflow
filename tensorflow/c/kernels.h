@@ -35,9 +35,9 @@ extern "C" {
 // `TF_RegisterKernelBuilder`, which will allow TF to construct user-provided
 // kernels when necessary.
 
-struct TF_KernelBuilder;
-struct TF_OpKernelConstruction;
-struct TF_OpKernelContext;
+typedef struct TF_KernelBuilder TF_KernelBuilder;
+typedef struct TF_OpKernelConstruction TF_OpKernelConstruction;
+typedef struct TF_OpKernelContext TF_OpKernelContext;
 
 // Allocates a new kernel builder and returns a pointer to it.
 //
@@ -102,6 +102,14 @@ TF_CAPI_EXPORT extern int TF_NumOutputs(TF_OpKernelContext* ctx);
 // If i < 0 or i >= TF_NumInputs(ctx), *status is set to TF_OUT_OF_RANGE.
 TF_CAPI_EXPORT extern void TF_GetInput(TF_OpKernelContext* ctx, int i,
                                        TF_Tensor** tensor, TF_Status* status);
+
+// Sets the ith output of ctx to tensor. If TF_GetCode(status) is anything but
+// TF_OK, ctx is left unmodified.
+//
+// If i < 0 or i >= TF_NumOutputs(ctx), *status is set to TF_OUT_OF_RANGE.
+TF_CAPI_EXPORT extern void TF_SetOutput(TF_OpKernelContext* ctx, int i,
+                                        const TF_Tensor* tensor,
+                                        TF_Status* status);
 
 #ifdef __cplusplus
 } /* end extern "C" */

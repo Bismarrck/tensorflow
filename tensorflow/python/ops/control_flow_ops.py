@@ -24,13 +24,11 @@ from __future__ import print_function
 import abc
 import collections
 import functools
-import os
 
 import six
 
 from tensorflow.core.framework import attr_value_pb2
 from tensorflow.core.protobuf import control_flow_pb2
-from tensorflow.python import tf2
 from tensorflow.python.eager import context
 from tensorflow.python.framework import constant_op
 from tensorflow.python.framework import dtypes
@@ -56,6 +54,7 @@ from tensorflow.python.platform import tf_logging as logging
 from tensorflow.python.util import compat
 from tensorflow.python.util import deprecation
 from tensorflow.python.util import nest
+from tensorflow.python.util import tf_should_use
 from tensorflow.python.util.lazy_loader import LazyLoader
 from tensorflow.python.util.tf_export import tf_export
 
@@ -69,9 +68,6 @@ cond_v2 = LazyLoader("cond_v2", globals(),
 # while_v2 -> gradients_impl -> control_flow_ops
 while_v2 = LazyLoader("while_v2", globals(),
                       "tensorflow.python.ops.while_v2")
-
-ENABLE_COND_V2 = tf2.enabled() or os.getenv("TF_ENABLE_COND_V2", "0") != "0"
-ENABLE_WHILE_V2 = tf2.enabled() or os.getenv("TF_ENABLE_WHILE_V2", "0") != "0"
 
 # We override the 'tuple' for a control flow op, so we keep python's
 # existing 'tuple' for later use in this module.
@@ -112,6 +108,7 @@ def _summarize_eager(tensor, summarize=None):
 # Assert and Print are special symbols in python, so we must
 # use an upper-case version of them.
 @tf_export("debugging.Assert", "Assert")
+@tf_should_use.should_use_result
 def Assert(condition, data, summarize=None, name=None):
   """Asserts that the given condition is true.
 
@@ -2050,7 +2047,9 @@ def cond(pred,
   ```
 
   """
-  if ENABLE_COND_V2 and not context.executing_eagerly():
+  # Always enable control flow v2 if building a function, regardless of toggle.
+  if (util.EnableControlFlowV2(ops.get_default_graph()) and
+      not context.executing_eagerly()):
     return cond_v2.cond_v2(pred, true_fn, false_fn, name)
 
   # We needed to make true_fn/false_fn keyword arguments for
@@ -3485,7 +3484,9 @@ def while_loop(cond,
   ```
 
   """
-  if ENABLE_WHILE_V2 and not context.executing_eagerly():
+  # Always enable control flow v2 if building a function, regardless of toggle.
+  if (util.EnableControlFlowV2(ops.get_default_graph()) and
+      not context.executing_eagerly()):
     return while_v2.while_loop(
         cond,
         body,
